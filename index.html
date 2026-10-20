@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Student Lookup</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Hillcrest High School</h1>
+        <p class="site-subtitle">STUDENT ROSTER &amp; LOOKUP</p>
+      </div>
+      <div class="header-spacer"></div>
+
+      <!-- Admin auth widget: deliberately understated — only staff need it -->
+      <div id="authWidget" class="auth-widget">
+        <button id="authToggleBtn" class="staff-link">Staff sign in</button>
+        <div id="authPopover" class="auth-popover is-hidden">
+          <form id="authForm">
+            <label for="authEmail">Email</label>
+            <input type="email" id="authEmail" required autocomplete="username" />
+            <label for="authPassword">Password</label>
+            <input type="password" id="authPassword" required autocomplete="current-password" />
+            <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+            <p id="authError" class="error-text"></p>
+          </form>
+        </div>
+        <span id="adminBadge" class="admin-badge is-hidden"></span>
+        <button id="addStudentModalBtn" class="staff-link is-hidden" style="margin-right: 10px;">+ Add student</button>
+        <button id="openBulkUpdateBtn" class="staff-link is-hidden" style="margin-left: 8px;">Bulk Update</button>
+        <button id="signOutBtn" class="staff-link is-hidden">Sign out</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <form id="searchForm" class="control-rail" novalidate>
+      <div class="field-row">
+        <div class="field-grow">
+          <label for="query">Search</label>
+          <input type="text" id="query" name="query" placeholder="Admin number, student name, or class…"
+            autocomplete="off" />
+        </div>
+        <div>
+          <label for="field">Search field</label>
+          <select id="field" name="field">
+            <option value="auto" selected>Auto (admin / name / class)</option>
+            <option value="admin">Admin No</option>
+            <option value="name">Name</option>
+            <option value="class">Registration class</option>
+          </select>
+        </div>
+        <div class="field-row-actions">
+          <button type="submit" class="btn btn-primary">Search</button>
+          <button type="button" id="openFiltersBtn" class="btn btn-ghost">
+            Filters <span id="filterCountBadge" class="filter-count-badge is-hidden">0</span>
+          </button>
+          <button type="button" id="resetBtn" class="btn btn-ghost">Clear all</button>
+        </div>
+      </div>
+
+      <div id="activeFilters" class="active-filters"></div>
+    </form>
+
+    <!-- Student Teams Management Modal -->
+    <div id="studentTeamsModal" class="modal-wrapper is-hidden">
+      <div class="modal-backdrop" id="teamsModalCloseScrim"></div>
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title" id="teamsModalTitle">Manage Student Teams</h3>
+            <p class="modal-subtitle" id="teamsModalSubtitle">Student: -</p>
+          </div>
+          <button type="button" class="btn-close" id="closeTeamsModalBtn">&times;</button>
+        </div>
+
+        <form id="studentTeamsForm">
+          <div class="modal-body" id="teamsListContainer">
+            <!-- Team rows will be dynamically populated here -->
+          </div>
+
+          <div class="modal-actions-bar">
+            <button type="button" class="btn btn-secondary" id="addTeamRowBtn">+ Add Team</button>
+          </div>
+
+          <div class="modal-footer">
+            <p id="teamsModalError" class="error-text" style="color: #dc3545; font-size: 0.85rem;"></p>
+            <div class="btn-group">
+              <button type="button" class="btn btn-outline" id="cancelTeamsModalBtn">Cancel</button>
+              <button type="submit" class="btn btn-primary" id="saveTeamsBtn">Save Changes</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Filter panel: inline, collapsed by default, sits below the search bar -->
+    <section id="filterModal" class="filter-panel is-hidden" aria-label="Filters">
+      <div class="filter-panel-header">
+        <h2 class="modal-title">Filters</h2>
+        <button id="filterModalClose" class="drawer-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-grid">
+        <div>
+          <label for="filterGrade">Grade</label>
+          <select id="filterGrade">
+            <option value="">All grades</option>
+            <option value="8">Grade 8</option>
+            <option value="9">Grade 9</option>
+            <option value="10">Grade 10</option>
+            <option value="11">Grade 11</option>
+            <option value="12">Grade 12</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterClass">Class</label>
+          <select id="filterClass">
+            <option value="">All classes</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterGender">Gender</label>
+          <select id="filterGender">
+            <option value="">All</option>
+            <option value="Female">Female</option>
+            <option value="Male">Male</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterSubject">Subject</label>
+          <select id="filterSubject">
+            <option value="">All subjects</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterLine">Subject Line</label>
+          <select id="filterLine">
+            <option value="">All lines</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterTeacher">Teacher</label>
+          <select id="filterTeacher" disabled>
+            <option value="">Select a subject first</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="filterTeam">Team</label>
+        <select id="filterTeam">
+          <option value="">All teams</option>
+        </select>
+      </div>
+      <div>
+        <label for="filterAgeGroup">Age Group</label>
+        <select id="filterAgeGroup" disabled>
+          <option value="">Select a team first</option>
+        </select>
+      </div>
+      <div class="filter-panel-footer">
+        <button type="button" id="filterClearBtn" class="btn btn-ghost">Clear all</button>
+        <button type="button" id="filterApplyBtn" class="btn btn-primary">Apply filters</button>
+      </div>
+    </section>
+
+    <div class="results-meta">
+      <span id="resultCount">Loading…</span>
+      <div class="results-actions" style="display: flex; gap: 12px; align-items: center;">
+        <button type="button" id="printCardsBtn" class="btn btn-ghost is-hidden">Print / Export PDF</button>
+        <div class="layout-toggle" role="group" aria-label="Result layout">
+          <button type="button" class="layout-btn is-active" data-layout="list">List</button>
+          <button type="button" class="layout-btn" data-layout="grid2">Grid · 2</button>
+          <button type="button" class="layout-btn" data-layout="grid4">Grid · 4</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="loadingState" class="loading-state">
+      <span class="spinner" aria-hidden="true"></span>
+      <span>Loading student roster…</span>
+    </div>
+
+    <div id="tableWrap" class="table-wrap is-hidden">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th>Admin No</th>
+            <th>Grade / Class</th>
+            <th>Gender</th>
+            <th>Subjects</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+
+    <div id="cardsWrap" class="cards-wrap is-hidden">
+      <div id="resultsGrid" class="results-grid"></div>
+    </div>
+  </main>
+
+  <div id="scrim" class="scrim"></div>
+  <aside id="drawer" class="drawer" aria-label="Student details">
+    <button id="drawerClose" class="drawer-close" aria-label="Close">&times;</button>
+    <div id="drawerHeader" class="drawer-header"></div>
+    <div id="drawerContent"></div>
+  </aside>
+
+  <!-- Env config must load before any module that reads window.APP_CONFIG -->
+  <script src="js/config.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
