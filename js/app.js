@@ -14,12 +14,15 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  getDoc,
 } from "./firebase-init.js";
 
 import {
   getAllStudents,
   collectSubjects,
   collectClasses,
+  patchCachedStudent,
+  clearRosterCache,
 } from "./data-service.js";
 
 import { filterStudents, sortStudents } from "./search.js";
@@ -107,7 +110,171 @@ let newStudentDraft = {};
 let currentTeamsStudentAdminNo = null;
 let allAvailableTeams = [];
 
+// near the other state variables
+let rosterLoaded = false;
+let resolveAuthReady;
+const authReady = new Promise((r) => (resolveAuthReady = r));
+
+const ALLOWED_TYPES = ["admin", "slt", "staff"];
+const TYPE_LABELS = { admin: "Admin", slt: "SLT", staff: "Staff" };
+const LOADING_HTML = `<span class="spinner" aria-hidden="true"></span><span>Loading student roster…</span>`;
+
+let currentUser = null;
+let userType = null;
+
+async function getUserType(user) {
+  const ids = [user.uid, (user.email || "").toLowerCase()].filter(Boolean);
+  for (const id of ids) {
+    try {
+      const snap = await getDoc(doc(db, "authorized_users", id));
+      if (snap.exists()) {
+        const t = String(snap.data().type || "").toLowerCase();
+        if (ALLOWED_TYPES.includes(t)) return t;
+      }
+    } catch (err) {
+      console.warn("authorized_users lookup failed for", id, err.code);
+    }
+  }
+  return null;
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById("authError") || createAuthErrorElement(els.authForm);
+  el.textContent = msg;
+  els.authPopover?.classList.remove("is-hidden");
+}
+
+function showLoginRequired() {
+  els.resultCount.textContent = "Sign in to view students";
+  els.loadingState.style.display = "flex";
+  els.loadingState.innerHTML =
+    `<p class="empty-hint">Please sign in with your school staff account to view the student roster.</p>`;
+}
+
+function clearRoster() {
+  roster = [];
+  allAvailableTeams = [];
+  clearRosterCache();
+  els.tbody.innerHTML = "";
+  els.resultsGrid.innerHTML = "";
+}
+
+async function loadAll() {
+  els.loadingState.style.display = "flex";
+  els.loadingState.innerHTML = LOADING_HTML;
+  try {
+    await loadRoster({ forceRefresh: true });
+    await loadAvailableTeams();
+  } catch (err) {
+    els.loadingState.innerHTML = `
+      <p class="error-text">Couldn't load the student roster.</p>
+      <p class="empty-hint">${err.message}</p>`;
+    return false;
+  }
+  els.loadingState.style.display = "none";
+  (currentLayout === "list" ? els.tableWrap : els.cardsWrap).classList.remove("is-hidden");
+  return true;
+}
+
+function applyAuthUi(user) {
+  const signedIn = Boolean(user);
+  document.body.classList.toggle("is-locked", !signedIn);
+  if (els.adminBadge) {
+    const label = TYPE_LABELS[userType] || "";
+    els.adminBadge.textContent = signedIn
+      ? `${label}: ${user.email}${isAdmin ? "" : " (view only)"}`
+      : "";
+    els.adminBadge.classList.toggle("is-hidden", !signedIn);
+  }
+  els.signOutBtn?.classList.toggle("is-hidden", !signedIn);
+  els.addStudentModalBtn?.classList.toggle("is-hidden", !isAdmin);
+  els.openBulkUpdateBtn?.classList.toggle("is-hidden", !isAdmin);
+  els.authToggleBtn?.classList.toggle("is-hidden", signedIn);
+  els.authPopover?.classList.add("is-hidden");
+}
+
+onAuthStateChanged(auth, async (user) => {
+  const previousUid = currentUser?.uid ?? null;
+  const type = user ? await getUserType(user) : null;
+
+  // Signed in with Firebase but not listed in authorized_users: no access.
+  if (user && !type) {
+    await signOut(auth);
+    showAuthError("This account is not authorised to view student data.");
+    return;
+  }
+
+  currentUser = user;
+  userType = type;
+  isAdmin = type === "admin";
+
+  applyAuthUi(user);
+  closeDrawer();
+  currentEditingStudent = null;
+
+  if (!user) {
+    clearRoster();
+    showLoginRequired();
+    focusLogin();
+    return;
+  }
+
+  if (user.uid !== previousUid) {
+    if (!(await loadAll())) return;
+  }
+  runSearch();
+});
+
+function init() {
+  wireEvents();   // the auth observer above decides what loads
+}
+init();
+
+function focusLogin() {
+  els.authPopover?.classList.remove("is-hidden");
+  els.authEmail?.focus();
+}
+
+async function checkIsAdmin(user) {
+  const ids = [user.uid, (user.email || "").toLowerCase()].filter(Boolean);
+  for (const id of ids) {
+    try {
+      const snap = await getDoc(doc(db, "authorized_users", id));
+      if (snap.exists() && snap.data().role === "admin") return true;
+    } catch (err) {
+      console.warn("authorized_users lookup failed for", id, err.code);
+    }
+  }
+  return false;
+}
+
+function applyAuthUi(user) {
+  const signedIn = Boolean(user);
+  if (els.adminBadge) {
+    els.adminBadge.textContent = signedIn
+      ? (isAdmin ? `Admin: ${user.email}` : `Signed in: ${user.email} (view only)`)
+      : "";
+    els.adminBadge.classList.toggle("is-hidden", !signedIn);
+  }
+  els.signOutBtn?.classList.toggle("is-hidden", !signedIn);
+  els.addStudentModalBtn?.classList.toggle("is-hidden", !isAdmin);
+  els.openBulkUpdateBtn?.classList.toggle("is-hidden", !isAdmin);
+  els.authToggleBtn?.classList.toggle("is-hidden", signedIn);
+  els.authPopover?.classList.add("is-hidden");
+}
+
+async function loadRoster({ forceRefresh = false } = {}) {
+  const raw = await getAllStudents({ forceRefresh });
+  roster = raw.filter((s) => s && s.adminNo);
+  populateSelect(els.subject, collectSubjects(roster), "All subjects");
+  populateSelect(els.line, collectLines(roster), "All lines");
+  refreshClassOptions();
+  refreshTeacherOptions();
+}
+
 function runSearch() {
+  if (!currentUser) return;
+
   let results = sortStudents(filterStudents(roster, state()));
 
   const selectedLine = els.line ? els.line.value : "";
@@ -482,7 +649,12 @@ function wireEvents() {
 
   // Combined Drawer Content Click Handler (Edit Student AND Manage Teams)
   els.drawerContent.addEventListener("click", (e) => {
-    if (e.target.id === "editStudentBtn" || e.target.closest("#editStudentBtn")) {
+
+
+    if (e.target.id === "editStudentBtn" || e.target.closest("#editStudentBtn")) 
+      {
+      if (!isAdmin) return;
+
       const adminNo = els.drawer.dataset.activeAdminNo;
       const student = roster.find((s) => String(s.adminNo) === String(adminNo));
       if (!student) return;
@@ -496,6 +668,8 @@ function wireEvents() {
         allSubjects,
         teacherMap,
       );
+
+      patchCachedStudent(roster[index])
     }
 
     if (e.target.id === "openTeamsModalBtn" || e.target.closest("#openTeamsModalBtn")) {
@@ -842,6 +1016,8 @@ document.addEventListener("submit", async (e) => {
       errorEl.textContent =
         `Failed to save updates to database: ${err.message}`;
     }
+
+    await loadRoster({ forceRefresh: true })
   }
 });
 
@@ -873,6 +1049,8 @@ document.addEventListener("click", (e) => {
 
 // Add Student Handlers
 els.addStudentModalBtn.addEventListener("click", () => {
+  if (!isAdmin) return;
+
   newStudentDraft = { subjectsSummary: [], enrollments: {} };
   els.drawerHeader.innerHTML = `<div><h2 class="drawer-name">Register New Student</h2></div>`;
   els.drawerContent.innerHTML = renderAddStudentForm(
@@ -961,6 +1139,8 @@ els.drawerContent.addEventListener("click", (e) => {
 });
 
 els.openBulkUpdateBtn.addEventListener("click", () => {
+  if (!isAdmin) return;
+
   const modalWrapper = document.createElement("div");
   modalWrapper.id = "bulkModalWrapper";
   modalWrapper.innerHTML = renderBulkUpdateModal(
@@ -972,29 +1152,30 @@ els.openBulkUpdateBtn.addEventListener("click", () => {
 
 // Auth Observer
 onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    const isStaffEmail = user.email && user.email.endsWith("@hhs.co.za");
-    const tokenResult = await user.getIdTokenResult().catch(() => ({ claims: {} }));
-    const hasAdminClaim = Boolean(tokenResult.claims?.admin);
+  const previousUid = currentUser?.uid ?? null;
+  currentUser = user;
 
-    isAdmin = isStaffEmail || hasAdminClaim || true;
-
-    if (els.adminBadge) els.adminBadge.textContent = `Staff: ${user.email}`;
-    els.adminBadge?.classList.remove("is-hidden");
-    els.signOutBtn?.classList.remove("is-hidden");
-    els.addStudentModalBtn?.classList.remove("is-hidden");
-    els.openBulkUpdateBtn?.classList.remove("is-hidden");
-    els.authToggleBtn?.classList.add("is-hidden");
-    els.authPopover?.classList.add("is-hidden");
-  } else {
-    isAdmin = false;
-    els.adminBadge?.classList.add("is-hidden");
-    els.signOutBtn?.classList.add("is-hidden");
-    els.addStudentModalBtn?.classList.add("is-hidden");
-    els.openBulkUpdateBtn?.classList.add("is-hidden");
-    els.authToggleBtn?.classList.remove("is-hidden");
+  try {
+    isAdmin = user ? await checkIsAdmin(user) : false;
+  } finally {
+    resolveAuthReady();
   }
+
+  applyAuthUi(user);
+  closeDrawer();
+  currentEditingStudent = null;
+
+  // After init, a sign-in/out change reloads data. Staff get a fresh Firestore read, not the session cache.
+  if (rosterLoaded && (user?.uid ?? null) !== previousUid) {
+    try {
+      await loadRoster({ forceRefresh: Boolean(user) });
+    } catch (err) {
+      console.error("Roster refresh after auth change failed:", err);
+    }
+  }
+
   runSearch();
+  if (!user) focusLogin();
 });
 
 // Sign-In Form Listener
@@ -1073,10 +1254,9 @@ if (signOutBtn) {
 
 async function init() {
   wireEvents();
+  await authReady;
   try {
-    let rawRoster = await getAllStudents();
-    roster = rawRoster.filter(student => student && student.adminNo);
-    
+    await loadRoster({ forceRefresh: Boolean(currentUser) });
     await loadAvailableTeams();
   } catch (err) {
     els.loadingState.innerHTML = `
@@ -1084,12 +1264,7 @@ async function init() {
       <p class="empty-hint">${err.message}</p>`;
     return;
   }
-
-  populateSelect(els.subject, collectSubjects(roster), "All subjects");
-  populateSelect(els.line, collectLines(roster), "All lines");
-  refreshClassOptions();
-  refreshTeacherOptions();
-
+  rosterLoaded = true;
   els.loadingState.remove();
   els.tableWrap.classList.remove("is-hidden");
   runSearch();

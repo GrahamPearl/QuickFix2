@@ -621,3 +621,9 @@ tbody td {
   object-fit: cover;
   border-radius: var(--radius);
 }
+
+body.is-locked #searchForm,
+body.is-locked #tableWrap,
+body.is-locked #cardsWrap,
+body.is-locked .layout-toggle,
+body.is-locked #printCardsBtn { display: none !important; }

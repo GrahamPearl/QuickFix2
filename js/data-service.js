@@ -9,7 +9,7 @@
  * cheapest and the fastest option.
  * ----------------------------------------------------------------
  */
-import { db, collection, getDocs } from "./firebase-init.js";
+import { db, collection, getDocs, patchCachedStudent } from "./firebase-init.js";
 
 
 const CACHE_KEY = "hhs_students_cache_v1";
@@ -113,4 +113,9 @@ export function patchCachedStudent(updatedRecord) {
   );
   writeSessionCache(memoryCache);
   return memoryCache;
+}
+
+export function clearRosterCache() {
+  memoryCache = null;
+  try { sessionStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
 }
