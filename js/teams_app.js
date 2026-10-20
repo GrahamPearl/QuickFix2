@@ -10,8 +10,17 @@ import {
   getDocs,
   setDoc,
   deleteDoc,
-  onSnapshot
+  onSnapshot,
+  auth, 
+  onAuthStateChanged, 
 } from "./firebase-init.js";
+
+const waitForAuth = () => new Promise((resolve) => {
+  const off = onAuthStateChanged(auth, (u) => { off(); resolve(u); });
+});
+
+// first line of init():
+if (!(await waitForAuth())) { location.href = "index.html"; return; }
 
 import { getAllStudents } from "./data-service.js";
 

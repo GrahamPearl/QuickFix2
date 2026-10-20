@@ -199,7 +199,7 @@ function applyAuthUi(user) {
   els.authToggleBtn?.classList.toggle("is-hidden", signedIn);
   els.authPopover?.classList.add("is-hidden");
 }
-/*
+
 onAuthStateChanged(auth, async (user) => {
   const previousUid = currentUser?.uid ?? null;
   const type = user ? await getUserType(user) : null;
@@ -231,12 +231,14 @@ onAuthStateChanged(auth, async (user) => {
   }
   runSearch();
 });
-*/
 
+
+/*
 function init() {
   wireEvents();   // the auth observer above decides what loads
 }
-init();
+  */
+
 
 function focusLogin() {
   els.authPopover?.classList.remove("is-hidden");
@@ -518,7 +520,7 @@ function debounce(fn, ms) {
   };
 }
 
-function wireEvents() {
+async function wireEvents() {
   els.form.addEventListener("submit", (e) => {
     e.preventDefault();
     runSearch();
@@ -679,7 +681,15 @@ function wireEvents() {
         teacherMap,
       );
 
-      patchCachedStudent(roster[index])
+      // edit submit, after: roster[index] = currentEditingStudent;
+patchCachedStudent(currentEditingStudent);
+
+// teams submit, after: roster[index].teams = updatedTeams;
+patchCachedStudent(roster[index]);
+
+// bulk submit, change the last line to:
+await loadRoster({ forceRefresh: true });
+runSearch();
     }
 
     if (e.target.id === "openTeamsModalBtn" || e.target.closest("#openTeamsModalBtn")) {
@@ -1161,6 +1171,7 @@ els.openBulkUpdateBtn.addEventListener("click", () => {
 });
 
 // Auth Observer
+/*
 onAuthStateChanged(auth, async (user) => {
   const previousUid = currentUser?.uid ?? null;
   currentUser = user;
@@ -1187,6 +1198,7 @@ onAuthStateChanged(auth, async (user) => {
   runSearch();
   if (!user) focusLogin();
 });
+*/
 
 // Sign-In Form Listener
 const authForm = document.getElementById("authForm");
@@ -1262,7 +1274,7 @@ if (signOutBtn) {
   });
 }
 
-/*
+
 async function init() {
   wireEvents();
   await authReady;
@@ -1280,6 +1292,6 @@ async function init() {
   els.tableWrap.classList.remove("is-hidden");
   runSearch();
 }
-*/
+
 
 init();
