@@ -178,6 +178,13 @@ async function loadAll() {
 
 function applyAuthUi(user) {
   const signedIn = Boolean(user);
+  
+  // Toggle the login gate overlay
+  const loginGate = document.getElementById("loginGate");
+  if (loginGate) {
+    loginGate.classList.toggle("is-hidden", signedIn);
+  }
+
   document.body.classList.toggle("is-locked", !signedIn);
   if (els.adminBadge) {
     const label = TYPE_LABELS[userType] || "";
@@ -192,7 +199,7 @@ function applyAuthUi(user) {
   els.authToggleBtn?.classList.toggle("is-hidden", signedIn);
   els.authPopover?.classList.add("is-hidden");
 }
-
+/*
 onAuthStateChanged(auth, async (user) => {
   const previousUid = currentUser?.uid ?? null;
   const type = user ? await getUserType(user) : null;
@@ -224,6 +231,7 @@ onAuthStateChanged(auth, async (user) => {
   }
   runSearch();
 });
+*/
 
 function init() {
   wireEvents();   // the auth observer above decides what loads
@@ -248,6 +256,7 @@ async function checkIsAdmin(user) {
   return false;
 }
 
+/*
 function applyAuthUi(user) {
   const signedIn = Boolean(user);
   if (els.adminBadge) {
@@ -262,6 +271,7 @@ function applyAuthUi(user) {
   els.authToggleBtn?.classList.toggle("is-hidden", signedIn);
   els.authPopover?.classList.add("is-hidden");
 }
+*/
 
 async function loadRoster({ forceRefresh = false } = {}) {
   const raw = await getAllStudents({ forceRefresh });
@@ -1252,6 +1262,7 @@ if (signOutBtn) {
   });
 }
 
+/*
 async function init() {
   wireEvents();
   await authReady;
@@ -1269,5 +1280,6 @@ async function init() {
   els.tableWrap.classList.remove("is-hidden");
   runSearch();
 }
+*/
 
 init();

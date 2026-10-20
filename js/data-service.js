@@ -9,7 +9,7 @@
  * cheapest and the fastest option.
  * ----------------------------------------------------------------
  */
-import { db, collection, getDocs, patchCachedStudent } from "./firebase-init.js";
+import { db, collection, getDocs } from "./firebase-init.js";
 
 
 const CACHE_KEY = "hhs_students_cache_v1";
@@ -106,6 +106,7 @@ export function collectTeachers(students, subject) {
  * successful edit, so the table reflects it instantly without an extra
  * Firestore read. Returns the refreshed array.
  */
+
 export function patchCachedStudent(updatedRecord) {
   if (!memoryCache) return null;
   memoryCache = memoryCache.map((s) =>

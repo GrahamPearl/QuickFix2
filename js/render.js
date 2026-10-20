@@ -644,3 +644,35 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
     </div>
   `;
 }
+
+export function renderUserManagementModal(usersList = []) {
+  return `
+    <div class="modal-backdrop" id="userModalBackdrop">
+      <div class="modal-content" style="max-width: 600px; background: white; padding: 24px; border-radius: 8px;">
+        <h3>User Access Management</h3>
+        <p class="empty-hint">Add or edit authorized user roles (Admin & Head Staff only).</p>
+        
+        <form id="saveUserForm" style="margin-top: 16px;">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>User Email or UID</label>
+            <input type="text" id="targetUserId" class="form-control" placeholder="user@school.edu" required style="width:100%;" />
+          </div>
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label>Access Type / Role</label>
+            <select id="targetUserType" class="form-control" required style="width:100%;">
+              <option value="staff">Staff (Search queries)</option>
+              <option value="slt">SLT (Search queries)</option>
+              <option value="staffhead">Head Staff (Search + User Management)</option>
+              <option value="admin">Admin (Full Access)</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+            <button type="button" id="closeUserModalBtn" class="btn btn-secondary">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save User Access</button>
+          </div>
+        </form>
+        <p id="userModalError" class="error-text" style="color: #dc3545; margin-top: 8px;"></p>
+      </div>
+    </div>
+  `;
+}

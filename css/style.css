@@ -627,3 +627,62 @@ body.is-locked #tableWrap,
 body.is-locked #cardsWrap,
 body.is-locked .layout-toggle,
 body.is-locked #printCardsBtn { display: none !important; }
+
+/* ==========================================================
+   Login Gate Overlay
+   ========================================================== */
+.login-gate {
+  position: fixed;
+  inset: 0;
+  background: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+.login-gate.is-hidden {
+  display: none !important;
+}
+.login-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  width: min(400px, 100%);
+  padding: 32px 28px;
+  text-align: center;
+}
+.login-card .crest {
+  margin: 0 auto 16px auto;
+}
+.login-title {
+  font-family: var(--font-serif);
+  font-size: 1.4rem;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.login-hint {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+.login-card form {
+  text-align: left;
+}
+.login-card label {
+  margin-top: 12px;
+}
+.login-card label:first-of-type {
+  margin-top: 0;
+}
+.login-divider {
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+.login-status {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 12px;
+}
