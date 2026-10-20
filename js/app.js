@@ -139,7 +139,9 @@ async function getUserType(user) {
 }
 
 function showAuthError(msg) {
-  const el = document.getElementById("authError") || createAuthErrorElement(els.authForm);
+  const el =
+    document.getElementById("authError") ||
+    createAuthErrorElement(els.authForm);
   el.textContent = msg;
   els.authPopover?.classList.remove("is-hidden");
 }
@@ -147,8 +149,7 @@ function showAuthError(msg) {
 function showLoginRequired() {
   els.resultCount.textContent = "Sign in to view students";
   els.loadingState.style.display = "flex";
-  els.loadingState.innerHTML =
-    `<p class="empty-hint">Please sign in with your school staff account to view the student roster.</p>`;
+  els.loadingState.innerHTML = `<p class="empty-hint">Please sign in with your school staff account to view the student roster.</p>`;
 }
 
 function clearRoster() {
@@ -172,13 +173,15 @@ async function loadAll() {
     return false;
   }
   els.loadingState.style.display = "none";
-  (currentLayout === "list" ? els.tableWrap : els.cardsWrap).classList.remove("is-hidden");
+  (currentLayout === "list" ? els.tableWrap : els.cardsWrap).classList.remove(
+    "is-hidden",
+  );
   return true;
 }
 
 function applyAuthUi(user) {
   const signedIn = Boolean(user);
-  
+
   // Toggle the login gate overlay
   const loginGate = document.getElementById("loginGate");
   if (loginGate) {
@@ -232,13 +235,11 @@ onAuthStateChanged(auth, async (user) => {
   runSearch();
 });
 
-
 /*
 function init() {
   wireEvents();   // the auth observer above decides what loads
 }
   */
-
 
 function focusLogin() {
   els.authPopover?.classList.remove("is-hidden");
@@ -362,7 +363,7 @@ function refreshAgeGroupOptions() {
   }
 
   const teamObj = allAvailableTeams.find(
-    (t) => t.teamName === selectedTeamName || t.id === selectedTeamName
+    (t) => t.teamName === selectedTeamName || t.id === selectedTeamName,
   );
 
   let groups = [];
@@ -483,7 +484,9 @@ function openStudentTeamsModal(adminNo) {
 
   const subtitleEl = document.getElementById("teamsModalSubtitle");
   if (subtitleEl) {
-    const displayName = student.fullName || `${student.firstName || ""} ${student.lastName || ""}`.trim();
+    const displayName =
+      student.fullName ||
+      `${student.firstName || ""} ${student.lastName || ""}`.trim();
     subtitleEl.textContent = `Student: ${displayName} (${adminNo})`;
   }
 
@@ -661,10 +664,10 @@ async function wireEvents() {
 
   // Combined Drawer Content Click Handler (Edit Student AND Manage Teams)
   els.drawerContent.addEventListener("click", (e) => {
-
-
-    if (e.target.id === "editStudentBtn" || e.target.closest("#editStudentBtn")) 
-      {
+    if (
+      e.target.id === "editStudentBtn" ||
+      e.target.closest("#editStudentBtn")
+    ) {
       if (!isAdmin) return;
 
       const adminNo = els.drawer.dataset.activeAdminNo;
@@ -681,18 +684,22 @@ async function wireEvents() {
         teacherMap,
       );
 
-      // edit submit, after: roster[index] = currentEditingStudent;
-patchCachedStudent(currentEditingStudent);
+                  // edit submit, after: roster[index] = currentEditingStudent;
+      patchCachedStudent(currentEditingStudent);
 
 // teams submit, after: roster[index].teams = updatedTeams;
-patchCachedStudent(roster[index]);
+      patchCachedStudent(roster[index]);
 
 // bulk submit, change the last line to:
-await loadRoster({ forceRefresh: true });
-runSearch();
+      loadRoster({ forceRefresh: true });
+
+      runSearch();
     }
 
-    if (e.target.id === "openTeamsModalBtn" || e.target.closest("#openTeamsModalBtn")) {
+    if (
+      e.target.id === "openTeamsModalBtn" ||
+      e.target.closest("#openTeamsModalBtn")
+    ) {
       const adminNo = els.drawer.dataset.activeAdminNo;
       if (adminNo) {
         openStudentTeamsModal(adminNo);
@@ -814,86 +821,120 @@ runSearch();
   document.getElementById("addTeamRowBtn")?.addEventListener("click", () => {
     const container = document.getElementById("teamsListContainer");
     if (container) {
-      container.insertAdjacentHTML("beforeend", renderTeamRow({}, allAvailableTeams));
+      container.insertAdjacentHTML(
+        "beforeend",
+        renderTeamRow({}, allAvailableTeams),
+      );
     }
   });
 
-  document.getElementById("teamsListContainer")?.addEventListener("change", (e) => {
-  if (e.target.classList.contains("team-select")) {
-    const selectedTeamName = e.target.value;
-    const row = e.target.closest(".team-edit-row");
-    const groupSelect = row ? row.querySelector(".team-group-select") : null;
+  document
+    .getElementById("teamsListContainer")
+    ?.addEventListener("change", (e) => {
+      if (e.target.classList.contains("team-select")) {
+        const selectedTeamName = e.target.value;
+        const row = e.target.closest(".team-edit-row");
+        const groupSelect = row
+          ? row.querySelector(".team-group-select")
+          : null;
 
-    if (groupSelect) {
-      const selectedTeamObj = allAvailableTeams.find(
-        (t) => t.teamName === selectedTeamName || t.id === selectedTeamName
-      );
+        if (groupSelect) {
+          const selectedTeamObj = allAvailableTeams.find(
+            (t) => t.teamName === selectedTeamName || t.id === selectedTeamName,
+          );
 
-      let ageGroups = [];
-      if (selectedTeamObj && selectedTeamObj.ageGroups) {
-        ageGroups = Object.keys(selectedTeamObj.ageGroups);
-      }
+          let ageGroups = [];
+          if (selectedTeamObj && selectedTeamObj.ageGroups) {
+            ageGroups = Object.keys(selectedTeamObj.ageGroups);
+          }
 
-      if (ageGroups.length === 0) {
-        ageGroups = ["No Age Group", "U14", "U15", "U16", "U19", "Open", "Junior", "Senior"];
-      }
+          if (ageGroups.length === 0) {
+            ageGroups = [
+              "No Age Group",
+              "U14",
+              "U15",
+              "U16",
+              "U19",
+              "Open",
+              "Junior",
+              "Senior",
+            ];
+          }
 
-      groupSelect.innerHTML =
-        '<option value="">Select Group...</option>' +
-        ageGroups.map((g) => `<option value="${g}">${g}</option>`).join("");
-    }
-  }
-});
-
-  document.getElementById("closeTeamsModalBtn")?.addEventListener("click", closeStudentTeamsModal);
-  document.getElementById("teamsModalCloseScrim")?.addEventListener("click", closeStudentTeamsModal);
-  document.getElementById("cancelTeamsModalBtn")?.addEventListener("click", closeStudentTeamsModal);
-
-  document.getElementById("studentTeamsForm")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    if (!isAdmin) {
-      alert("Unauthorized: Only authenticated staff can modify team memberships.");
-      return;
-    }
-
-    const container = document.getElementById("teamsListContainer");
-    const rows = container ? container.querySelectorAll(".team-edit-row") : [];
-    const updatedTeams = [];
-
-    rows.forEach((row) => {
-      const teamName = row.querySelector(".team-select").value;
-      const ageGroup = row.querySelector(".team-group-select").value;
-      const role = row.querySelector(".student-role-select").value;
-
-      if (teamName) {
-        updatedTeams.push({ teamName, ageGroup, role });
+          groupSelect.innerHTML =
+            '<option value="">Select Group...</option>' +
+            ageGroups.map((g) => `<option value="${g}">${g}</option>`).join("");
+        }
       }
     });
 
-    try {
-      const studentRef = doc(db, "students", String(currentTeamsStudentAdminNo));
+  document
+    .getElementById("closeTeamsModalBtn")
+    ?.addEventListener("click", closeStudentTeamsModal);
+  document
+    .getElementById("teamsModalCloseScrim")
+    ?.addEventListener("click", closeStudentTeamsModal);
+  document
+    .getElementById("cancelTeamsModalBtn")
+    ?.addEventListener("click", closeStudentTeamsModal);
 
-      await updateDoc(studentRef, {
-        teams: updatedTeams,
-      });
+  document
+    .getElementById("studentTeamsForm")
+    ?.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-      const index = roster.findIndex(
-        (s) => String(s.adminNo) === String(currentTeamsStudentAdminNo)
-      );
-      if (index !== -1) {
-        roster[index].teams = updatedTeams;
+      if (!isAdmin) {
+        alert(
+          "Unauthorized: Only authenticated staff can modify team memberships.",
+        );
+        return;
       }
 
-      closeStudentTeamsModal();
-      runSearch();
-      console.log(`Teams updated successfully for student ${currentTeamsStudentAdminNo}`);
-    } catch (err) {
-      console.error("Failed to update student teams:", err);
-      const errorEl = document.getElementById("teamsModalError");
-      if (errorEl) errorEl.textContent = `Failed to save: ${err.message}`;
-    }
-  });
+      const container = document.getElementById("teamsListContainer");
+      const rows = container
+        ? container.querySelectorAll(".team-edit-row")
+        : [];
+      const updatedTeams = [];
+
+      rows.forEach((row) => {
+        const teamName = row.querySelector(".team-select").value;
+        const ageGroup = row.querySelector(".team-group-select").value;
+        const role = row.querySelector(".student-role-select").value;
+
+        if (teamName) {
+          updatedTeams.push({ teamName, ageGroup, role });
+        }
+      });
+
+      try {
+        const studentRef = doc(
+          db,
+          "students",
+          String(currentTeamsStudentAdminNo),
+        );
+
+        await updateDoc(studentRef, {
+          teams: updatedTeams,
+        });
+
+        const index = roster.findIndex(
+          (s) => String(s.adminNo) === String(currentTeamsStudentAdminNo),
+        );
+        if (index !== -1) {
+          roster[index].teams = updatedTeams;
+        }
+
+        closeStudentTeamsModal();
+        runSearch();
+        console.log(
+          `Teams updated successfully for student ${currentTeamsStudentAdminNo}`,
+        );
+      } catch (err) {
+        console.error("Failed to update student teams:", err);
+        const errorEl = document.getElementById("teamsModalError");
+        if (errorEl) errorEl.textContent = `Failed to save: ${err.message}`;
+      }
+    });
 
   els.team.addEventListener("change", () => {
     refreshAgeGroupOptions();
@@ -911,7 +952,8 @@ runSearch();
     if (els.teacher) {
       els.teacher.value = "";
       els.teacher.disabled = true;
-      els.teacher.innerHTML = '<option value="">Select a subject first</option>';
+      els.teacher.innerHTML =
+        '<option value="">Select a subject first</option>';
     }
     if (els.line) els.line.value = "";
 
@@ -934,7 +976,9 @@ document.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     if (!isAdmin) {
-      alert("Unauthorized: You must be signed in as staff to perform bulk updates.");
+      alert(
+        "Unauthorized: You must be signed in as staff to perform bulk updates.",
+      );
       return;
     }
 
@@ -1033,11 +1077,10 @@ document.addEventListener("submit", async (e) => {
       runSearch();
     } catch (err) {
       console.error("Error committing bulk update to Firestore:", err);
-      errorEl.textContent =
-        `Failed to save updates to database: ${err.message}`;
+      errorEl.textContent = `Failed to save updates to database: ${err.message}`;
     }
 
-    await loadRoster({ forceRefresh: true })
+    await loadRoster({ forceRefresh: true });
   }
 });
 
@@ -1205,10 +1248,11 @@ const authForm = document.getElementById("authForm");
 if (authForm) {
   authForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    
+
     const emailInput = document.getElementById("authEmail");
     const passwordInput = document.getElementById("authPassword");
-    const errorEl = document.getElementById("authError") || createAuthErrorElement(authForm);
+    const errorEl =
+      document.getElementById("authError") || createAuthErrorElement(authForm);
 
     errorEl.textContent = "";
 
@@ -1274,7 +1318,6 @@ if (signOutBtn) {
   });
 }
 
-
 async function init() {
   wireEvents();
   await authReady;
@@ -1292,6 +1335,5 @@ async function init() {
   els.tableWrap.classList.remove("is-hidden");
   runSearch();
 }
-
 
 init();
