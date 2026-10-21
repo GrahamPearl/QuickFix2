@@ -1,7 +1,3 @@
-/**
- * app.js — wires data-service, search, and render together.
- */
-
 import {
   db,
   doc,
@@ -42,6 +38,8 @@ import {
   renderBulkUpdateModal,
   renderTeamRow, // <--- CRITICAL IMPORT FIX
 } from "./render.js";
+
+import { loadUserTypes, getTypeDef, can, resolveUserType } from "./usertypes.js";
 
 const els = {
   form: document.getElementById("searchForm"),
@@ -117,29 +115,12 @@ let rosterLoaded = false;
 let resolveAuthReady;
 const authReady = new Promise((r) => (resolveAuthReady = r));
 
-const ALLOWED_TYPES = ["admin", "slt", "staff"];
-const TYPE_LABELS = { admin: "Admin", slt: "SLT", staff: "Staff" };
 const LOADING_HTML = `<span class="spinner" aria-hidden="true"></span><span>Loading student roster…</span>`;
 
 let currentUser = null;
 let userType = null;
+let userTypes = null;
 
-async function getUserType(user) {
-  const email = (user.email || user.providerData?.find((p) => p.email)?.email || "").toLowerCase();
-  const ids = [user.uid, email].filter(Boolean);
-  for (const id of ids) {
-    try {
-      const snap = await getDoc(doc(db, "authorized_users", id));
-      if (snap.exists()) {
-        const t = String(snap.data().type || "").toLowerCase();
-        if (ALLOWED_TYPES.includes(t)) return t;
-      }
-    } catch (err) {
-      console.warn("authorized_users lookup failed for", id, err.code);
-    }
-  }
-  return null;
-}
 
 function showAuthError(msg) {
   const el =
@@ -182,30 +163,39 @@ async function loadAll() {
   return true;
 }
 
+function renderAuthLinks(def) {
+  const nav = document.getElementById("authLinks");
+  if (!nav) return;
+  nav.replaceChildren(
+    ...(def?.links || []).map((l) => {
+      const a = document.createElement("a");
+      a.className = "staff-link";
+      a.href = l.href;
+      a.textContent = l.label;
+      return a;
+    }),
+  );
+}
+
 function applyAuthUi(user) {
   const signedIn = Boolean(user);
+  const def = getTypeDef(userTypes, userType);
 
-  // Toggle the login gate overlay
-  const loginGate = document.getElementById("loginGate");
-  if (loginGate) {
-    loginGate.classList.toggle("is-hidden", signedIn);
-  }
-
+  document.getElementById("loginGate")?.classList.toggle("is-hidden", signedIn);
   document.body.classList.toggle("is-locked", !signedIn);
+  els.authWidget.dataset.userType = signedIn ? userType || "" : "";
+
   if (els.adminBadge) {
-    const label = TYPE_LABELS[userType] || "";
     els.adminBadge.textContent = signedIn
-      ? `${label}: ${user.email}${isAdmin ? "" : " (view only)"}`
+      ? `${def?.label || ""}: ${user.email}${isAdmin ? "" : " (view only)"}`
       : "";
     els.adminBadge.classList.toggle("is-hidden", !signedIn);
   }
   els.signOutBtn?.classList.toggle("is-hidden", !signedIn);
-  els.addStudentModalBtn?.classList.toggle("is-hidden", !isAdmin);
-  els.openBulkUpdateBtn?.classList.toggle("is-hidden", !isAdmin);
-  els.authToggleBtn?.classList.toggle("is-hidden", signedIn);
-  els.authPopover?.classList.add("is-hidden");
+  els.addStudentModalBtn?.classList.toggle("is-hidden", !can(userTypes, userType, "addStudent"));
+  els.openBulkUpdateBtn?.classList.toggle("is-hidden", !can(userTypes, userType, "bulkUpdate"));
+  renderAuthLinks(signedIn ? def : null);
 }
-
 function setAuthStatus(msg) {
   const el = document.getElementById("authStatus");
   if (el) el.textContent = msg;
@@ -237,11 +227,11 @@ onAuthStateChanged(auth, async (user) => {
   const previousUid = currentUser?.uid ?? null;
 
   if (user) setAuthStatus("Verifying your access…"); 
-  const type = user ? await getUserType(user) : null;
+  userTypes ??= await loadUserTypes();
+  const type = user ? await resolveUserType(user, userTypes) : null;
 
   setAuthBusy(false);     
 
-  // Signed in with Firebase but not listed in authorized_users: no access.
   if (user && !type) {
     await signOut(auth);
     showAuthError("This account is not authorised to view student data.");
@@ -250,8 +240,8 @@ onAuthStateChanged(auth, async (user) => {
 
   currentUser = user;
   userType = type;
-  isAdmin = type === "admin";
-
+  isAdmin = can(userTypes, type, "edit");
+  
   applyAuthUi(user);
   closeDrawer();
   currentEditingStudent = null;
@@ -269,46 +259,11 @@ onAuthStateChanged(auth, async (user) => {
   runSearch();
 });
 
-/*
-function init() {
-  wireEvents();   // the auth observer above decides what loads
-}
-  */
 
 function focusLogin() {
   els.authPopover?.classList.remove("is-hidden");
   els.authEmail?.focus();
 }
-
-async function checkIsAdmin(user) {
-  const ids = [user.uid, (user.email || "").toLowerCase()].filter(Boolean);
-  for (const id of ids) {
-    try {
-      const snap = await getDoc(doc(db, "authorized_users", id));
-      if (snap.exists() && snap.data().role === "admin") return true;
-    } catch (err) {
-      console.warn("authorized_users lookup failed for", id, err.code);
-    }
-  }
-  return false;
-}
-
-/*
-function applyAuthUi(user) {
-  const signedIn = Boolean(user);
-  if (els.adminBadge) {
-    els.adminBadge.textContent = signedIn
-      ? (isAdmin ? `Admin: ${user.email}` : `Signed in: ${user.email} (view only)`)
-      : "";
-    els.adminBadge.classList.toggle("is-hidden", !signedIn);
-  }
-  els.signOutBtn?.classList.toggle("is-hidden", !signedIn);
-  els.addStudentModalBtn?.classList.toggle("is-hidden", !isAdmin);
-  els.openBulkUpdateBtn?.classList.toggle("is-hidden", !isAdmin);
-  els.authToggleBtn?.classList.toggle("is-hidden", signedIn);
-  els.authPopover?.classList.add("is-hidden");
-}
-*/
 
 async function loadRoster({ forceRefresh = false } = {}) {
   const raw = await getAllStudents({ forceRefresh });
@@ -1315,7 +1270,6 @@ if (microsoftBtn) {
     setAuthBusy(true, "Waiting for Microsoft sign-in…", microsoftBtn);
     try {
       await signInWithPopup(auth, provider);
-      // onAuthStateChanged takes it from here
     } catch (err) {
       setAuthBusy(false);   
       console.error("Microsoft sign-in error:", err.code, err.message);

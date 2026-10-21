@@ -706,7 +706,22 @@ body.is-locked #printCardsBtn { display: none !important; }
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: spin 0.7s linear infinite;   /* @keyframes spin already exists */
+  animation: spin 0.7s linear infinite;   
 }
 
 .login-status { min-height: 1.3em; }
+
+.staff-link {
+  background: none; border: none; color: var(--gold-soft); font: inherit;
+  font-size: 0.82rem; cursor: pointer; text-decoration: underline; padding: 4px 6px;
+}
+.staff-link:hover { color: #fff; }
+.staff-link.is-hidden, .admin-badge.is-hidden { display: none; }
+
+.auth-links { display: flex; align-items: center; gap: 6px; }
+.auth-links:empty { display: none; }
+
+/* badge colour per type (value of data-user-type on #authWidget) */
+.auth-widget[data-user-type="admin"] .admin-badge { background: var(--gold); color: var(--ink); }
+.auth-widget[data-user-type="slt"]   .admin-badge { background: rgba(255, 255, 255, 0.18); color: #fff; }
+.auth-widget[data-user-type="staff"] .admin-badge { background: rgba(255, 255, 255, 0.08); color: var(--gold-soft); }

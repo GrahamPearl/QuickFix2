@@ -11,26 +11,26 @@
 <body>
 
   <div id="loginGate" class="login-gate">
-  <div class="login-card">
-    <div class="crest" aria-hidden="true">HHS</div>
-    <h2 class="login-title">Staff sign in</h2>
-    <p class="login-hint">Sign in with your school account to view the student roster.</p>
+    <div class="login-card">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <h2 class="login-title">Staff sign in</h2>
+      <p class="login-hint">Sign in with your school account to view the student roster.</p>
 
-    <form id="authForm">
-      <label for="authEmail">Email</label>
-      <input type="email" id="authEmail" autofocus required autocomplete="username" />
-      <label for="authPassword">Password</label>
-      <input type="password" id="authPassword" required autocomplete="current-password" />
-      <button type="submit" class="btn btn-primary btn-block">Sign in</button>
-    </form>
+      <form id="authForm">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" autofocus required autocomplete="username" />
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" required autocomplete="current-password" />
+        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+      </form>
 
-    <div class="login-divider">
-      <button type="button" id="microsoftSignInBtn" class="btn btn-block">Sign in with Microsoft</button>
+      <div class="login-divider">
+        <button type="button" id="microsoftSignInBtn" class="btn btn-block">Sign in with Microsoft</button>
+      </div>
+
+      <p id="authStatus" class="login-status"></p>
     </div>
-
-    <p id="authStatus" class="login-status"></p>
   </div>
-</div>
 
   <header class="site-header">
     <div class="header-inner">
@@ -42,7 +42,8 @@
       <div class="header-spacer"></div>
 
       <!-- Admin auth widget: deliberately understated — only staff need it -->
-      <div id="authWidget" class="auth-widget">
+      <div id="authWidget" class="auth-widget" data-user-type="">
+        <nav id="authLinks" class="auth-links"></nav>
         <span id="adminBadge" class="admin-badge is-hidden"></span>
         <button id="addStudentModalBtn" class="staff-link is-hidden">+ Add student</button>
         <button id="openBulkUpdateBtn" class="staff-link is-hidden">Bulk Update</button>
