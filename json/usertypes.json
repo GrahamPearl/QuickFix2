@@ -19,10 +19,43 @@
         { "label": "Manage users", "href": "admin_users.html" }
       ]
     },
-    "slt": {
-      "label": "SLT",
-      "level": 1,
-      "description": "Senior leadership: read-only access to the roster, plus awards.",
+    "staffHead": {
+      "label": "Head Staff",
+      "level": 0,
+      "description": "Full access: edit students, bulk update, manage teams, manage users.",
+      "permissions": {
+        "view": true,
+        "edit": true,
+        "addStudent": true,
+        "bulkUpdate": true,
+        "manageUsers": true
+      },
+      "links": [
+        { "label": "Teams", "href": "teams.html" },
+        { "label": "Awards", "href": "awards.html" },
+        { "label": "Manage users", "href": "admin_users.html" }
+      ]
+    },
+    "staffGC": {
+      "label": "Staff - Grade Controller",
+      "level": 0,
+      "description": "Full access: edit students, manage teams.",
+      "permissions": {
+        "view": true,
+        "edit": true,
+        "addStudent": true,
+        "bulkUpdate": false,
+        "manageUsers": false
+      },
+      "links": [
+        { "label": "Teams", "href": "teams.html" },
+        { "label": "Awards", "href": "awards.html" }
+      ]
+    },
+     "staffOffice": {
+      "label": "Staff - Office",
+      "level": 0,
+      "description": "Partial access: view students, view teams, view awards.",
       "permissions": {
         "view": true,
         "edit": false,
@@ -31,6 +64,7 @@
         "manageUsers": false
       },
       "links": [
+        { "label": "Teams", "href": "teams.html" },
         { "label": "Awards", "href": "awards.html" }
       ]
     },
@@ -46,6 +80,21 @@
         "manageUsers": false
       },
       "links": []
+    },
+    "slt": {
+      "label": "SLT",
+      "level": 1,
+      "description": "Senior leadership: read-only access to the roster, plus teams.",
+      "permissions": {
+        "view": true,
+        "edit": false,
+        "addStudent": false,
+        "bulkUpdate": false,
+        "manageUsers": false
+      },
+      "links": [
+        { "label": "Teams", "href": "teams.html" }
+      ]
     }
   }
 }
