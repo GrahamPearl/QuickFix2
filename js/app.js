@@ -15,6 +15,8 @@ import {
   signOut,
   onAuthStateChanged,
   getDoc,
+  OAuthProvider,
+  signInWithPopup,
 } from "./firebase-init.js";
 
 import {
@@ -123,7 +125,8 @@ let currentUser = null;
 let userType = null;
 
 async function getUserType(user) {
-  const ids = [user.uid, (user.email || "").toLowerCase()].filter(Boolean);
+  const email = (user.email || user.providerData?.find((p) => p.email)?.email || "").toLowerCase();
+  const ids = [user.uid, email].filter(Boolean);
   for (const id of ids) {
     try {
       const snap = await getDoc(doc(db, "authorized_users", id));
@@ -203,9 +206,40 @@ function applyAuthUi(user) {
   els.authPopover?.classList.add("is-hidden");
 }
 
+function setAuthStatus(msg) {
+  const el = document.getElementById("authStatus");
+  if (el) el.textContent = msg;
+}
+
+function setAuthBusy(busy, message = "", activeBtn = null) {
+  const buttons = [
+    document.querySelector('#authForm [type="submit"]'),
+    document.getElementById("microsoftSignInBtn"),
+  ].filter(Boolean);
+
+  buttons.forEach((b) => {
+    b.disabled = busy;                      // blocks double clicks and Enter-key resubmits
+    const isActive = busy && b === activeBtn;
+    b.classList.toggle("is-busy", isActive);
+    if (isActive) {
+      b.dataset.label ||= b.textContent;    // remember the original label once
+      b.textContent = "Signing in…";
+    } else if (b.dataset.label) {
+      b.textContent = b.dataset.label;
+    }
+  });
+
+  const statusEl = document.getElementById("authStatus");
+  if (statusEl) statusEl.textContent = busy ? message : "";
+}
+
 onAuthStateChanged(auth, async (user) => {
   const previousUid = currentUser?.uid ?? null;
+
+  if (user) setAuthStatus("Verifying your access…"); 
   const type = user ? await getUserType(user) : null;
+
+  setAuthBusy(false);     
 
   // Signed in with Firebase but not listed in authorized_users: no access.
   if (user && !type) {
@@ -571,8 +605,7 @@ async function wireEvents() {
   });
   els.class.addEventListener("change", runSearch);
 
-  els.resetBtn.addEventListener("click", () => {
-    // Clear search text, search field and every filter
+  els.resetBtn.addEventListener("click", async () => {
   els.query.value = "";
   els.field.value = "auto";
   resetFilterControls();
@@ -580,25 +613,23 @@ async function wireEvents() {
   closeDrawer();
   updateFilterBadge();
 
-  // Show a loading state while the fresh data is fetched
   els.resetBtn.disabled = true;
   els.resultCount.textContent = "Reloading…";
   els.tbody.innerHTML = "";
   els.resultsGrid.innerHTML = "";
 
   try {
-    clearRosterCache();                       // drop memory + sessionStorage cache
-    loadRoster({ forceRefresh: true }); // straight from Firestore
-    loadAvailableTeams();
+    clearRosterCache();
+    await loadRoster({ forceRefresh: true });
+    await loadAvailableTeams();
+    runSearch();                      // render only after fresh data is in
   } catch (err) {
     console.error("Reload failed:", err);
     els.resultCount.textContent = "Couldn't reload the roster";
   } finally {
     els.resetBtn.disabled = false;
   }
-
-  runSearch();
-  });
+});
 
   els.tbody.addEventListener("click", (e) => {
     const row = e.target.closest(".roster-row");
@@ -1212,36 +1243,6 @@ els.openBulkUpdateBtn.addEventListener("click", () => {
   document.body.appendChild(modalWrapper);
 });
 
-// Auth Observer
-/*
-onAuthStateChanged(auth, async (user) => {
-  const previousUid = currentUser?.uid ?? null;
-  currentUser = user;
-
-  try {
-    isAdmin = user ? await checkIsAdmin(user) : false;
-  } finally {
-    resolveAuthReady();
-  }
-
-  applyAuthUi(user);
-  closeDrawer();
-  currentEditingStudent = null;
-
-  // After init, a sign-in/out change reloads data. Staff get a fresh Firestore read, not the session cache.
-  if (rosterLoaded && (user?.uid ?? null) !== previousUid) {
-    try {
-      await loadRoster({ forceRefresh: Boolean(user) });
-    } catch (err) {
-      console.error("Roster refresh after auth change failed:", err);
-    }
-  }
-
-  runSearch();
-  if (!user) focusLogin();
-});
-*/
-
 // Sign-In Form Listener
 const authForm = document.getElementById("authForm");
 if (authForm) {
@@ -1263,11 +1264,14 @@ if (authForm) {
       return;
     }
 
+    setAuthBusy(true, "Signing in…", e.submitter); 
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
       authForm.reset();
       errorEl.textContent = "";
     } catch (err) {
+      setAuthBusy(false); 
       console.error("Firebase Sign-in error:", err.code, err.message);
 
       switch (err.code) {
@@ -1289,6 +1293,49 @@ if (authForm) {
           errorEl.textContent = `Sign-in failed: ${err.message}`;
       }
     }
+  });
+}
+
+// Set to your school's Directory (tenant) ID if the Azure app is single-tenant.
+// Leave "" if the app allows any Microsoft account.
+const MICROSOFT_TENANT_ID = "";
+
+const microsoftBtn = document.getElementById("microsoftSignInBtn");
+if (microsoftBtn) {
+  microsoftBtn.addEventListener("click", async () => {
+    const statusEl = document.getElementById("authStatus");
+    statusEl.textContent = "";
+
+    const provider = new OAuthProvider("microsoft.com");
+    provider.setCustomParameters({
+      prompt: "select_account",
+      ...(MICROSOFT_TENANT_ID ? { tenant: MICROSOFT_TENANT_ID } : {}),
+    });
+
+    setAuthBusy(true, "Waiting for Microsoft sign-in…", microsoftBtn);
+    try {
+      await signInWithPopup(auth, provider);
+      // onAuthStateChanged takes it from here
+    } catch (err) {
+      setAuthBusy(false);   
+      console.error("Microsoft sign-in error:", err.code, err.message);
+      switch (err.code) {
+        case "auth/popup-closed-by-user":
+        case "auth/cancelled-popup-request":
+          break; // user closed the window; no message needed
+        case "auth/popup-blocked":
+          statusEl.textContent = "Your browser blocked the sign-in window. Allow pop-ups and try again.";
+          break;
+        case "auth/operation-not-allowed":
+          statusEl.textContent = "Microsoft sign-in is not enabled yet.";
+          break;
+        case "auth/account-exists-with-different-credential":
+          statusEl.textContent = "This email already has a password account. Sign in with your password instead.";
+          break;
+        default:
+          statusEl.textContent = `Microsoft sign-in failed: ${err.message}`;
+      }
+    } 
   });
 }
 

@@ -22,6 +22,8 @@ import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
+  OAuthProvider,
+  signInWithPopup,
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -50,4 +52,6 @@ export {
   onAuthStateChanged,
   signOut,
   updateDoc,
+  OAuthProvider,
+  signInWithPopup,
 };

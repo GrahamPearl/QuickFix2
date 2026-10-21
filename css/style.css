@@ -687,3 +687,26 @@ body.is-locked #printCardsBtn { display: none !important; }
   color: var(--text-muted);
   margin-top: 12px;
 }
+.login-divider,
+#microsoftSignInBtn { display: none; }
+
+/* ---------- Sign-in progress ---------- */
+.btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.btn.is-busy,
+.btn.is-busy:disabled { cursor: progress; }
+
+.btn.is-busy::before {
+  content: "";
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 8px;
+  vertical-align: -2px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;   /* @keyframes spin already exists */
+}
+
+.login-status { min-height: 1.3em; }
