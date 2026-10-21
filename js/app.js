@@ -288,6 +288,8 @@ async function loadRoster({ forceRefresh = false } = {}) {
 function runSearch() {
   if (!currentUser) return;
 
+  updateFilterBadge();
+
   let results = sortStudents(filterStudents(roster, state()));
 
   const selectedLine = els.line ? els.line.value : "";
@@ -391,6 +393,29 @@ function collectLines(roster) {
     }
   });
   return Array.from(lines).sort((a, b) => a - b);
+}
+
+const FILTER_KEYS = ["grade", "class", "gender", "subject", "line", "teacher", "team", "ageGroup"];
+
+function updateFilterBadge() {
+  if (!els.filterCountBadge) return;
+  const n = FILTER_KEYS.filter((k) => els[k] && els[k].value).length;
+  els.filterCountBadge.textContent = n;
+  els.filterCountBadge.classList.toggle("is-hidden", n === 0);
+}
+
+function resetFilterControls() {
+  FILTER_KEYS.forEach((k) => {
+    if (els[k]) els[k].value = "";
+  });
+
+  els.teacher.innerHTML = '<option value="">Select a subject first</option>';
+  els.teacher.disabled = true;
+
+  els.ageGroup.innerHTML = '<option value="">Select a team first</option>';
+  els.ageGroup.disabled = true;
+
+  refreshClassOptions(); // rebuild class list for "all grades"
 }
 
 function populateSelect(select, values, placeholder) {
@@ -547,10 +572,32 @@ async function wireEvents() {
   els.class.addEventListener("change", runSearch);
 
   els.resetBtn.addEventListener("click", () => {
-    els.form.reset();
-    refreshClassOptions();
-    refreshTeacherOptions();
-    runSearch();
+    // Clear search text, search field and every filter
+  els.query.value = "";
+  els.field.value = "auto";
+  resetFilterControls();
+  els.filterModal.classList.add("is-hidden");
+  closeDrawer();
+  updateFilterBadge();
+
+  // Show a loading state while the fresh data is fetched
+  els.resetBtn.disabled = true;
+  els.resultCount.textContent = "Reloading…";
+  els.tbody.innerHTML = "";
+  els.resultsGrid.innerHTML = "";
+
+  try {
+    clearRosterCache();                       // drop memory + sessionStorage cache
+    loadRoster({ forceRefresh: true }); // straight from Firestore
+    loadAvailableTeams();
+  } catch (err) {
+    console.error("Reload failed:", err);
+    els.resultCount.textContent = "Couldn't reload the roster";
+  } finally {
+    els.resetBtn.disabled = false;
+  }
+
+  runSearch();
   });
 
   els.tbody.addEventListener("click", (e) => {
@@ -586,24 +633,6 @@ async function wireEvents() {
 
   els.filterApplyBtn.addEventListener("click", () => {
     els.filterModal.classList.add("is-hidden");
-    runSearch();
-  });
-
-  els.filterClearBtn.addEventListener("click", () => {
-    els.grade.value = "";
-    els.class.value = "";
-    els.gender.value = "";
-    els.subject.value = "";
-    if (els.teacher) {
-      els.teacher.value = "";
-      els.teacher.disabled = true;
-      els.teacher.innerHTML =
-        '<option value="">Select a subject first</option>';
-    }
-    if (els.line) {
-      els.line.value = "";
-    }
-    refreshClassOptions();
     runSearch();
   });
 
@@ -683,17 +712,6 @@ async function wireEvents() {
         allSubjects,
         teacherMap,
       );
-
-                  // edit submit, after: roster[index] = currentEditingStudent;
-      patchCachedStudent(currentEditingStudent);
-
-// teams submit, after: roster[index].teams = updatedTeams;
-      patchCachedStudent(roster[index]);
-
-// bulk submit, change the last line to:
-      loadRoster({ forceRefresh: true });
-
-      runSearch();
     }
 
     if (
@@ -799,6 +817,7 @@ async function wireEvents() {
         const index = roster.findIndex((s) => String(s.adminNo) === adminNo);
         if (index !== -1) {
           roster[index] = currentEditingStudent;
+          patchCachedStudent(currentEditingStudent);
         }
 
         els.drawerContent.innerHTML = renderDrawerView(
@@ -922,6 +941,7 @@ async function wireEvents() {
         );
         if (index !== -1) {
           roster[index].teams = updatedTeams;
+          patchCachedStudent(roster[index]);
         }
 
         closeStudentTeamsModal();
@@ -943,31 +963,10 @@ async function wireEvents() {
 
   els.ageGroup.addEventListener("change", runSearch);
 
-  // Update "Clear All" filter listener
-  els.filterClearBtn.addEventListener("click", () => {
-    els.grade.value = "";
-    els.class.value = "";
-    els.gender.value = "";
-    els.subject.value = "";
-    if (els.teacher) {
-      els.teacher.value = "";
-      els.teacher.disabled = true;
-      els.teacher.innerHTML =
-        '<option value="">Select a subject first</option>';
-    }
-    if (els.line) els.line.value = "";
-
-    // Clear Team & Age Group
-    if (els.team) els.team.value = "";
-    if (els.ageGroup) {
-      els.ageGroup.value = "";
-      els.ageGroup.disabled = true;
-      els.ageGroup.innerHTML = '<option value="">Select a team first</option>';
-    }
-
-    refreshClassOptions();
-    runSearch();
-  });
+ els.filterClearBtn.addEventListener("click", () => {
+  resetFilterControls();
+  runSearch(); // also refreshes the badge
+});
 }
 
 // Bulk Update Submission
