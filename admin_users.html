@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — User Access</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">User Access</h1>
+        <p class="site-subtitle">AUTHORIZED USERS · ADMIN ONLY</p>
+      </div>
+      <div class="header-spacer"></div>
+      <span id="adminBadge" class="admin-badge is-hidden"></span>
+      <a href="index.html" class="staff-link">&larr; Back to roster</a>
+      <button id="signOutBtn" type="button" class="staff-link is-hidden">Sign out</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <!-- Shown until the signed-in user is verified as an admin -->
+    <div id="gateMessage" class="loading-state">
+      <span class="spinner" aria-hidden="true"></span>
+      <span id="gateText">Checking your access…</span>
+    </div>
+
+    <div id="adminContent" class="is-hidden">
+      <section class="panel">
+        <h2 class="panel-title" id="formTitle">Add user</h2>
+        <form id="userForm" novalidate>
+          <div class="user-form-grid">
+            <div>
+              <label for="userEmail">Email</label>
+              <input type="text" id="userEmail" autocomplete="off" placeholder="name@school.edu" />
+            </div>
+            <div>
+              <label for="userType">User type</label>
+              <select id="userType"></select>
+            </div>
+            <div class="user-form-actions">
+              <button type="submit" id="saveUserBtn" class="btn btn-primary">Add user</button>
+              <button type="button" id="cancelEditBtn" class="btn btn-ghost is-hidden">Cancel</button>
+            </div>
+          </div>
+          <p id="typeHint" class="empty-hint"></p>
+          <p id="formError" class="error-text"></p>
+          <p id="formOk" class="ok-text"></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <div class="panel-row">
+          <h2 class="panel-title">Authorized users <span id="userCount" class="empty-hint"></span></h2>
+          <button type="button" id="refreshUsersBtn" class="btn btn-ghost">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Email / ID</th><th>Type</th><th>Last updated by</th><th></th></tr>
+            </thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script type="module" src="js/admin_user.js"></script>
+</body>
+</html>

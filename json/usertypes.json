@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "collection": "authorized_users",
+  "types": {
+    "admin": {
+      "label": "Admin",
+      "level": 0,
+      "description": "Full access: edit students, bulk update, manage teams, manage users.",
+      "permissions": {
+        "view": true,
+        "edit": true,
+        "addStudent": true,
+        "bulkUpdate": true,
+        "manageUsers": true
+      },
+      "links": [
+        { "label": "Teams", "href": "teams.html" },
+        { "label": "Awards", "href": "awards.html" },
+        { "label": "Manage users", "href": "admin_users.html" }
+      ]
+    },
+    "slt": {
+      "label": "SLT",
+      "level": 1,
+      "description": "Senior leadership: read-only access to the roster, plus awards.",
+      "permissions": {
+        "view": true,
+        "edit": false,
+        "addStudent": false,
+        "bulkUpdate": false,
+        "manageUsers": false
+      },
+      "links": [
+        { "label": "Awards", "href": "awards.html" }
+      ]
+    },
+    "staff": {
+      "label": "Staff",
+      "level": 2,
+      "description": "Read-only access to the roster.",
+      "permissions": {
+        "view": true,
+        "edit": false,
+        "addStudent": false,
+        "bulkUpdate": false,
+        "manageUsers": false
+      },
+      "links": []
+    }
+  }
+}
