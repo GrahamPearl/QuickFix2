@@ -725,3 +725,5 @@ body.is-locked #printCardsBtn { display: none !important; }
 .auth-widget[data-user-type="admin"] .admin-badge { background: var(--gold); color: var(--ink); }
 .auth-widget[data-user-type="slt"]   .admin-badge { background: rgba(255, 255, 255, 0.18); color: #fff; }
 .auth-widget[data-user-type="staff"] .admin-badge { background: rgba(255, 255, 255, 0.08); color: var(--gold-soft); }
+
+.header-spacer { flex: 1; }

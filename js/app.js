@@ -39,7 +39,12 @@ import {
   renderTeamRow, // <--- CRITICAL IMPORT FIX
 } from "./render.js";
 
-import { loadUserTypes, getTypeDef, can, resolveUserType } from "./usertypes.js";
+import {
+  loadUserTypes,
+  getTypeDef,
+  can,
+  resolveUserType,
+} from "./usertypes.js";
 
 const els = {
   form: document.getElementById("searchForm"),
@@ -121,7 +126,6 @@ let currentUser = null;
 let userType = null;
 let userTypes = null;
 
-
 function showAuthError(msg) {
   const el =
     document.getElementById("authError") ||
@@ -192,8 +196,14 @@ function applyAuthUi(user) {
     els.adminBadge.classList.toggle("is-hidden", !signedIn);
   }
   els.signOutBtn?.classList.toggle("is-hidden", !signedIn);
-  els.addStudentModalBtn?.classList.toggle("is-hidden", !can(userTypes, userType, "addStudent"));
-  els.openBulkUpdateBtn?.classList.toggle("is-hidden", !can(userTypes, userType, "bulkUpdate"));
+  els.addStudentModalBtn?.classList.toggle(
+    "is-hidden",
+    !can(userTypes, userType, "addStudent"),
+  );
+  els.openBulkUpdateBtn?.classList.toggle(
+    "is-hidden",
+    !can(userTypes, userType, "bulkUpdate"),
+  );
   renderAuthLinks(signedIn ? def : null);
 }
 function setAuthStatus(msg) {
@@ -208,11 +218,11 @@ function setAuthBusy(busy, message = "", activeBtn = null) {
   ].filter(Boolean);
 
   buttons.forEach((b) => {
-    b.disabled = busy;                      // blocks double clicks and Enter-key resubmits
+    b.disabled = busy; // blocks double clicks and Enter-key resubmits
     const isActive = busy && b === activeBtn;
     b.classList.toggle("is-busy", isActive);
     if (isActive) {
-      b.dataset.label ||= b.textContent;    // remember the original label once
+      b.dataset.label ||= b.textContent; // remember the original label once
       b.textContent = "Signing in…";
     } else if (b.dataset.label) {
       b.textContent = b.dataset.label;
@@ -226,11 +236,16 @@ function setAuthBusy(busy, message = "", activeBtn = null) {
 onAuthStateChanged(auth, async (user) => {
   const previousUid = currentUser?.uid ?? null;
 
-  if (user) setAuthStatus("Verifying your access…"); 
-  userTypes ??= await loadUserTypes();
+  if (user) setAuthStatus("Verifying your access…");
+  try {
+    userTypes ??= await loadUserTypes();
+  } catch (err) {
+    showAuthError("Could not load user types: " + err.message);
+    return;
+  }
   const type = user ? await resolveUserType(user, userTypes) : null;
 
-  setAuthBusy(false);     
+  setAuthBusy(false);
 
   if (user && !type) {
     await signOut(auth);
@@ -241,7 +256,7 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   userType = type;
   isAdmin = can(userTypes, type, "edit");
-  
+
   applyAuthUi(user);
   closeDrawer();
   currentEditingStudent = null;
@@ -258,7 +273,6 @@ onAuthStateChanged(auth, async (user) => {
   }
   runSearch();
 });
-
 
 function focusLogin() {
   els.authPopover?.classList.remove("is-hidden");
@@ -384,7 +398,16 @@ function collectLines(roster) {
   return Array.from(lines).sort((a, b) => a - b);
 }
 
-const FILTER_KEYS = ["grade", "class", "gender", "subject", "line", "teacher", "team", "ageGroup"];
+const FILTER_KEYS = [
+  "grade",
+  "class",
+  "gender",
+  "subject",
+  "line",
+  "teacher",
+  "team",
+  "ageGroup",
+];
 
 function updateFilterBadge() {
   if (!els.filterCountBadge) return;
@@ -561,30 +584,30 @@ async function wireEvents() {
   els.class.addEventListener("change", runSearch);
 
   els.resetBtn.addEventListener("click", async () => {
-  els.query.value = "";
-  els.field.value = "auto";
-  resetFilterControls();
-  els.filterModal.classList.add("is-hidden");
-  closeDrawer();
-  updateFilterBadge();
+    els.query.value = "";
+    els.field.value = "auto";
+    resetFilterControls();
+    els.filterModal.classList.add("is-hidden");
+    closeDrawer();
+    updateFilterBadge();
 
-  els.resetBtn.disabled = true;
-  els.resultCount.textContent = "Reloading…";
-  els.tbody.innerHTML = "";
-  els.resultsGrid.innerHTML = "";
+    els.resetBtn.disabled = true;
+    els.resultCount.textContent = "Reloading…";
+    els.tbody.innerHTML = "";
+    els.resultsGrid.innerHTML = "";
 
-  try {
-    clearRosterCache();
-    await loadRoster({ forceRefresh: true });
-    await loadAvailableTeams();
-    runSearch();                      // render only after fresh data is in
-  } catch (err) {
-    console.error("Reload failed:", err);
-    els.resultCount.textContent = "Couldn't reload the roster";
-  } finally {
-    els.resetBtn.disabled = false;
-  }
-});
+    try {
+      clearRosterCache();
+      await loadRoster({ forceRefresh: true });
+      await loadAvailableTeams();
+      runSearch(); // render only after fresh data is in
+    } catch (err) {
+      console.error("Reload failed:", err);
+      els.resultCount.textContent = "Couldn't reload the roster";
+    } finally {
+      els.resetBtn.disabled = false;
+    }
+  });
 
   els.tbody.addEventListener("click", (e) => {
     const row = e.target.closest(".roster-row");
@@ -949,10 +972,10 @@ async function wireEvents() {
 
   els.ageGroup.addEventListener("change", runSearch);
 
- els.filterClearBtn.addEventListener("click", () => {
-  resetFilterControls();
-  runSearch(); // also refreshes the badge
-});
+  els.filterClearBtn.addEventListener("click", () => {
+    resetFilterControls();
+    runSearch(); // also refreshes the badge
+  });
 }
 
 // Bulk Update Submission
@@ -1219,14 +1242,14 @@ if (authForm) {
       return;
     }
 
-    setAuthBusy(true, "Signing in…", e.submitter); 
+    setAuthBusy(true, "Signing in…", e.submitter);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
       authForm.reset();
       errorEl.textContent = "";
     } catch (err) {
-      setAuthBusy(false); 
+      setAuthBusy(false);
       console.error("Firebase Sign-in error:", err.code, err.message);
 
       switch (err.code) {
@@ -1271,25 +1294,27 @@ if (microsoftBtn) {
     try {
       await signInWithPopup(auth, provider);
     } catch (err) {
-      setAuthBusy(false);   
+      setAuthBusy(false);
       console.error("Microsoft sign-in error:", err.code, err.message);
       switch (err.code) {
         case "auth/popup-closed-by-user":
         case "auth/cancelled-popup-request":
           break; // user closed the window; no message needed
         case "auth/popup-blocked":
-          statusEl.textContent = "Your browser blocked the sign-in window. Allow pop-ups and try again.";
+          statusEl.textContent =
+            "Your browser blocked the sign-in window. Allow pop-ups and try again.";
           break;
         case "auth/operation-not-allowed":
           statusEl.textContent = "Microsoft sign-in is not enabled yet.";
           break;
         case "auth/account-exists-with-different-credential":
-          statusEl.textContent = "This email already has a password account. Sign in with your password instead.";
+          statusEl.textContent =
+            "This email already has a password account. Sign in with your password instead.";
           break;
         default:
           statusEl.textContent = `Microsoft sign-in failed: ${err.message}`;
       }
-    } 
+    }
   });
 }
 
@@ -1318,22 +1343,8 @@ if (signOutBtn) {
   });
 }
 
-async function init() {
+function init() {
   wireEvents();
-  await authReady;
-  try {
-    await loadRoster({ forceRefresh: Boolean(currentUser) });
-    await loadAvailableTeams();
-  } catch (err) {
-    els.loadingState.innerHTML = `
-      <p class="error-text">Couldn't load the student roster.</p>
-      <p class="empty-hint">${err.message}</p>`;
-    return;
-  }
-  rosterLoaded = true;
-  els.loadingState.remove();
-  els.tableWrap.classList.remove("is-hidden");
-  runSearch();
 }
 
 init();
