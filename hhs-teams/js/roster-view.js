@@ -29,7 +29,7 @@ function card(admno) {
   return `<div class="student-card" data-adm="${esc(admno)}">${remove}
     <span class="gender gender-${esc(s.gender)}">${esc(s.gender)}</span>
     <div class="avatar">
-      <img src="${esc(photo)}" alt="${esc(s.firstName)}" loading="lazy" data-action="zoom">
+      <img src="${esc(photo)}" alt="${esc(s.firstName)}" loading="lazy" data-action="zoom" onerror="this.style.display='none';this.nextElementSibling.classList.remove('d-none')">
       <div class="avatar-fallback d-none">${esc(initials)}</div>
     </div>
     <div class="badge-row">${badge}</div>

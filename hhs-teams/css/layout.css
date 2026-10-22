@@ -28,3 +28,4 @@
 .row-hidden { opacity: .5; }
 @media (max-width: 600px) { #roster { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); } }
 @media print { .topbar, .bar, .sync-strip, #toastContainer, .remove-btn, .role-select { display: none !important; } }
+  body[data-can-edit="false"] :is(#addBtn,#removeBtn,#bulkBtn,#adminInput,#jsonImportBtn,#manageBtn,.remove-btn,.role-select){display:none!important}

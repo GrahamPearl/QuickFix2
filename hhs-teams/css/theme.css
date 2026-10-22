@@ -1,14 +1,17 @@
-/* Design tokens – override these in QuickFix2 to re-skin the whole page */
+@import url("https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600;700&display=swap");
 :root {
-  --bg: #f4f6fb; --surface: #fff; --border: #e3e7f0; --text: #1b2338; --muted: #6b7590;
-  --brand: #4f46e5; --brand-soft: #eceafd; --brand-dark: #1e1b4b;
-  --success: #12a37f; --danger: #e5484d; --warn: #c27803;
-  --radius: 14px; --shadow: 0 1px 2px rgba(20,28,60,.06), 0 4px 14px rgba(20,28,60,.06);
-  --font: "Inter", "Segoe UI", system-ui, sans-serif;
+  --bg:#f6f4ee; --surface:#fff; --border:#ded7c4; --text:#232323; --muted:#6b6559;
+  --brand:#16233f; --brand-soft:#eadfc3; --brand-dark:#16233f; --gold:#b8863e;
+  --success:#2f6b3a; --danger:#7a2e2e; --warn:#b8863e;
+  --radius:10px; --shadow:0 1px 2px rgba(22,35,63,.06),0 1px 1px rgba(22,35,63,.04);
+  --font:"Inter",system-ui,sans-serif;
 }
+.btn-primary:hover{background:#3b4a6b;border-color:#3b4a6b}
+.topbar{border-bottom:3px solid var(--gold)}
+.topbar .title{font-family:"Source Serif 4",Georgia,serif}
+
 body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
 .btn { border-radius: 10px; }
 .form-control, .form-select { border-radius: 10px; border-color: var(--border); }
 .form-control:focus, .form-select:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-soft); }
 .btn-primary { background: var(--brand); border-color: var(--brand); }
-.btn-primary:hover { background: #4338ca; border-color: #4338ca; }

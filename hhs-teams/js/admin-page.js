@@ -43,4 +43,5 @@ function bindReports() {
 bindTeamToolbar();
 bindStructure();
 bindReports();
-boot().then(reports.loadTemplate);
+
+boot("teamsAdmin").then(reports.loadTemplate);

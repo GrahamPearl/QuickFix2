@@ -11,7 +11,8 @@ let cache = null;
 
 export async function loadUserTypes() {
   if (cache) return cache;
-  const res = await fetch("json/usertypes.json", { cache: "no-cache" })
+  const res = await fetch(new URL("../json/usertypes.json", import.meta.url), { cache: "no-cache" })
+  
   if (!res.ok) throw new Error(`Could not load usertypes.json (${res.status})`);
   cache = await res.json();
   return cache;

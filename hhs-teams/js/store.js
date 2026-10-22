@@ -3,6 +3,7 @@ import { CONFIG } from "./config.js";
 import { DEFAULT_TEAMS } from "./data/default-teams.js";
 import * as fs from "./firestore.js";
 import { setSync, showUnsaved, splitKey, toast } from "./utils.js";
+import { getAllStudents } from "../../js/data-service.js";
 
 export const bus = new EventTarget();
 export const state = {
@@ -16,10 +17,13 @@ export const emit = () => bus.dispatchEvent(new Event("change"));
 
 export async function loadStudents() {
   try {
-    const res = await fetch(CONFIG.STUDENTS_JSON_URL);
-    if (!res.ok) throw new Error(res.status);
-    (await res.json()).forEach(s => state.students.set(String(s.adminNo).trim(), s));
-  } catch (e) { console.warn("students.json not loaded", e); }
+    (await getAllStudents()).forEach((s) =>
+      state.students.set(String(s.adminNo).trim(), {
+        ...s,
+        class: s.registrationClass || s.class || "",
+        gender: (s.gender || "")[0]?.toUpperCase() || "",
+      }));
+  } catch (e) { console.warn("students not loaded", e); }
 }
 
 export function metaFromTeams() {
@@ -90,11 +94,22 @@ export function removeMember(admno) {
   state.roster.splice(i, 1); delete state.rolesCur[admno]; commit();
   toast("Removed from team.", "danger");
 }
-export function setRole(admno, role) { state.rolesCur[admno] = role; commit(); }
+
+// addMember: change  state.roster.push(admno); state.rolesCur[admno] = "Member"; commit(); return true;
+state.roster.push(admno); state.rolesCur[admno] = "Member"; commit(); fs.syncStudentTeam(admno, state.key, "Member"); return true;
+
+// removeMember: after  commit();  add
+fs.syncStudentTeam(admno, state.key, null);
+
+// setRole: replace whole function
+export function setRole(admno, role) { state.rolesCur[admno] = role; commit(); fs.syncStudentTeam(admno, state.key, role); }
+
 export function bulkAdd(text) {
   let n = 0;
   text.split(/[\s,;]+/).map(t => t.trim()).filter(Boolean).forEach(t => {
-    if (!state.roster.includes(t)) { state.roster.push(t); state.rolesCur[t] = "Member"; n++; }
+    if (!state.roster.includes(t)) { state.roster.push(t); state.rolesCur[t] = "Member"; n++; 
+      fs.syncStudentTeam(t, state.key, "Member");
+    }
   });
   if (n) commit();
   return n;

@@ -14,7 +14,7 @@
         "manageUsers": true
       },
       "links": [
-        { "label": "Teams", "href": "teams.html" },
+        { "label": "Teams", "href": "hhs-teams/teams.html" },
         { "label": "Awards", "href": "awards.html" },
         { "label": "Manage users", "href": "admin_users.html" }
       ]
@@ -31,7 +31,7 @@
         "manageUsers": true
       },
       "links": [
-        { "label": "Teams", "href": "teams.html" },
+        { "label": "Teams", "href": "hhs-teams/teams.html" },
         { "label": "Awards", "href": "awards.html" },
         { "label": "Manage users", "href": "admin_users.html" }
       ]
@@ -48,7 +48,7 @@
         "manageUsers": false
       },
       "links": [
-        { "label": "Teams", "href": "teams.html" },
+        { "label": "Teams", "href": "hhs-teams/teams.html" },
         { "label": "Awards", "href": "awards.html" }
       ]
     },
@@ -64,14 +64,14 @@
         "manageUsers": false
       },
       "links": [
-        { "label": "Teams", "href": "teams.html" },
+        { "label": "Teams", "href": "hhs-teams/teams.html" },
         { "label": "Awards", "href": "awards.html" }
       ]
     },
     "staff": {
       "label": "Staff",
       "level": 2,
-      "description": "Read-only access to the roster.",
+      "description": "Read-only access to the roster and Teams.",
       "permissions": {
         "view": true,
         "edit": false,
@@ -79,7 +79,9 @@
         "bulkUpdate": false,
         "manageUsers": false
       },
-      "links": []
+      "links": [
+        { "label": "Teams", "href": "hhs-teams/teams.html" }
+      ]
     },
     "slt": {
       "label": "SLT",
@@ -93,7 +95,7 @@
         "manageUsers": false
       },
       "links": [
-        { "label": "Teams", "href": "teams.html" }
+        { "label": "Teams", "href": "hhs-teams/teams.html" }
       ]
     }
   }

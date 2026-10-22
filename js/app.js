@@ -325,25 +325,16 @@ function runSearch() {
 
 async function loadAvailableTeams() {
   try {
-    const snapshot = await getDocs(collection(db, "teams"));
-    allAvailableTeams = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      let teamName = data.teamName || doc.id;
-
-      // Clean fallback if legacy "||" string is retrieved
-      if (teamName.includes("||")) {
-        teamName = teamName.split("||")[0].trim();
-      }
-
-      return {
-        id: doc.id,
-        teamName: teamName,
-        ageGroups: data.ageGroups || {},
-        ...data,
-      };
-    });
-
-    // --- ADD THIS CALL TO POPULATE THE FILTER SELECT ---
+    const snap = await getDoc(doc(db, "teams", "_metadata"));
+    const meta = snap.exists() ? snap.data() : {};
+    const hidden = new Set(meta.hidden || []);
+    allAvailableTeams = (meta.activities || [])
+      .filter((a) => !hidden.has(a))
+      .map((a) => ({
+        id: a,
+        teamName: a,
+        ageGroups: Object.fromEntries(((meta.ageGroups || {})[a] || []).map((g) => [g, true])),
+      }));
     populateTeamFilterOptions();
   } catch (err) {
     console.error("Failed to load teams list from Firestore:", err);
