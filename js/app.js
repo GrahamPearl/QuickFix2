@@ -325,16 +325,16 @@ function runSearch() {
 
 async function loadAvailableTeams() {
   try {
-    const snap = await getDoc(doc(db, "teams", "_metadata"));
-    const meta = snap.exists() ? snap.data() : {};
-    const hidden = new Set(meta.hidden || []);
-    allAvailableTeams = (meta.activities || [])
-      .filter((a) => !hidden.has(a))
-      .map((a) => ({
-        id: a,
-        teamName: a,
-        ageGroups: Object.fromEntries(((meta.ageGroups || {})[a] || []).map((g) => [g, true])),
-      }));
+    const [snap, metaSnap] = await Promise.all([getDocs(collection(db, "teams")), getDoc(doc(db, "teams", "_metadata"))]);
+    const hidden = new Set(metaSnap.exists() ? metaSnap.data().hidden || [] : []);
+    allAvailableTeams = snap.docs
+      .filter((d) => !d.id.startsWith("_") && !d.id.includes("||"))
+      .map((d) => {
+        const x = d.data();
+        return { id: d.id, teamName: x.teamName || d.id, ageGroups: Object.fromEntries(Object.keys(x.ageGroups || {}).map((g) => [g, true])) };
+      })
+      .filter((t) => !hidden.has(t.teamName))
+      .sort((a, b) => a.teamName.localeCompare(b.teamName));
     populateTeamFilterOptions();
   } catch (err) {
     console.error("Failed to load teams list from Firestore:", err);

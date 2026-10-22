@@ -12,10 +12,12 @@ export async function addActivity(name, defaultAge) {
   state.meta.activities.push(name); sortActs();
   state.meta.ageGroups[name] = [defaultAge];
   state.teams[teamKey(name, defaultAge)] = [];
+  await fs.saveTeam(teamKey(name, defaultAge), { members: [], roles: {} });
   await persistMeta(); return true;
 }
 export async function deleteActivity(name) {
   for (const g of [...ages(name)]) await dropTeam(teamKey(name, g));
+  await fs.deleteActivity(name);
   state.meta.activities = state.meta.activities.filter(a => a !== name);
   delete state.meta.ageGroups[name];
   state.meta.hidden = (state.meta.hidden || []).filter(a => a !== name);
@@ -24,6 +26,7 @@ export async function deleteActivity(name) {
 export async function addAgeGroup(activity, age) {
   if (ages(activity).includes(age)) return false;
   ages(activity).push(age); state.teams[teamKey(activity, age)] ||= [];
+  await fs.saveTeam(teamKey(activity, age), { members: [], roles: {} });
   await persistMeta(); return true;
 }
 export async function deleteAgeGroup(activity, age) {
@@ -38,6 +41,7 @@ export async function renameActivity(oldName, newName) {
     await fs.saveTeam(to, { members: state.teams[to], roles: state.roles[to] }).catch(console.warn);
     await dropTeam(from);
   }
+  await fs.deleteActivity(oldName);
   state.meta.activities = state.meta.activities.map(a => (a === oldName ? newName : a));
   sortActs();
   state.meta.ageGroups[newName] = state.meta.ageGroups[oldName]; delete state.meta.ageGroups[oldName];
