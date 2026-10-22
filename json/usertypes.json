@@ -8,6 +8,7 @@
       "description": "Full access: edit students, bulk update, manage teams, manage users.",
       "permissions": {
         "view": true,
+        "viewTeams" : true,
         "edit": true,
         "addStudent": true,
         "bulkUpdate": true,
