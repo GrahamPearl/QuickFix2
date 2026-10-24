@@ -593,7 +593,7 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
   const selectedRole = studentTeam.role || "member";
 
   const roles = ["member", "captain", "vice-captain", "leadership", "volunteer"];
-  const ageGroups = ["1st", "2nd", "Grade 8", "Grade 9", "Grade 9", "Grade 10", "Grade 11", "Grade 12", "U14", "U15", "U16", "U17", "U18", "U19", "Open", "Junior", "Senior"];
+  const ageGroups = ["1st", "2nd", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12", "U14", "U15", "U16", "U17", "U18", "U19", "Open", "Junior", "Senior"];
 
   return `
     <div class="team-edit-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">

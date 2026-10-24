@@ -306,6 +306,7 @@ function runSearch() {
   }
 
   renderResultCount(els.resultCount, results.length, roster.length);
+  renderActiveFilters();
 
   if (results.length === 0) {
     if (currentLayout === "list") {

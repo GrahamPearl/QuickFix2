@@ -20,7 +20,7 @@
         { "label": "Manage users", "href": "admin_users.html" }
       ]
     },
-    "staffHead": {
+    "staff-head": {
       "label": "Head Staff",
       "level": 0,
       "description": "Full access: edit students, bulk update, manage teams, manage users.",
@@ -37,7 +37,7 @@
         { "label": "Manage users", "href": "admin_users.html" }
       ]
     },
-    "staffGC": {
+    "staff-gc": {
       "label": "Staff - Grade Controller",
       "level": 0,
       "description": "Full access: edit students, manage teams.",
@@ -53,7 +53,7 @@
         { "label": "Awards", "href": "awards.html" }
       ]
     },
-     "staffOffice": {
+     "staff-office": {
       "label": "Staff - Office",
       "level": 0,
       "description": "Partial access: view students, view teams, view awards.",

@@ -8,19 +8,22 @@ import { db, doc, getDoc } from "./firebase-init.js";
 
 let cache = null;
 
-
 export async function loadUserTypes() {
   if (cache) return cache;
-  const res = await fetch(new URL("../json/usertypes.json", import.meta.url), { cache: "no-cache" })
-  
+  const res = await fetch(new URL("../json/usertypes.json", import.meta.url), {
+    cache: "no-cache",
+  });
+
   if (!res.ok) throw new Error(`Could not load usertypes.json (${res.status})`);
   cache = await res.json();
   return cache;
 }
 
 export const typeKeys = (cfg) => Object.keys(cfg.types);
-export const getTypeDef = (cfg, type) => (cfg && type ? cfg.types[type] || null : null);
-export const can = (cfg, type, permission) => Boolean(getTypeDef(cfg, type)?.permissions?.[permission]);
+export const getTypeDef = (cfg, type) =>
+  cfg && type ? cfg.types[type] || null : null;
+export const can = (cfg, type, permission) =>
+  Boolean(getTypeDef(cfg, type)?.permissions?.[permission]);
 
 /** Looks up authorized_users/<uid>, then authorized_users/<lowercase email>. Returns a valid type key or null. */
 export async function resolveUserType(user, cfg) {
@@ -30,7 +33,8 @@ export async function resolveUserType(user, cfg) {
       const snap = await getDoc(doc(db, cfg.collection, id));
       if (snap.exists()) {
         const t = String(snap.data().type || "").toLowerCase();
-        if (cfg.types[t]) return t;
+        const key = Object.keys(cfg.types).find((k) => k.toLowerCase() === t);
+        if (key) return key;
       }
     } catch (err) {
       console.warn("authorized_users lookup failed for", id, err.code);

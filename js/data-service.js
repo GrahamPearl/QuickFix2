@@ -12,7 +12,7 @@
 import { db, collection, getDocs } from "./firebase-init.js";
 
 
-const CACHE_KEY = "hhs_students_cache_v1";
+const CACHE_KEY = STUDENTS_COLLECTION; //"hhs_students_cache_v1";
 const { CACHE_TTL_MS, STUDENTS_COLLECTION } = window.APP_CONFIG;
 
 let memoryCache = null; // array of student objects, held for the page's lifetime

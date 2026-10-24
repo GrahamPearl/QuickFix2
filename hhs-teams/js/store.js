@@ -1,4 +1,5 @@
 // Application state + mutations. UI listens to `bus` "change" events.
+
 import { CONFIG } from "./config.js";
 import { DEFAULT_TEAMS } from "./data/default-teams.js";
 import * as fs from "./firestore.js";
@@ -109,9 +110,7 @@ export function addMember(admno) {
   if (state.roster.includes(admno))
     return toast(`${admno} is already in this team.`, "warn");
   
-  state.roster.push(admno);
-  state.rolesCur[admno] = "Member";
-  commit();
+  state.roster.push(admno); state.rolesCur[admno] = "Member"; commit();
   fs.syncStudentTeam(admno, state.key, "Member");
   return true;
 }
@@ -119,10 +118,7 @@ export function addMember(admno) {
 export function removeMember(admno) {
   const i = state.roster.indexOf(admno);
   if (i < 0) return toast(`${admno} is not in this team.`, "warn");
-  
-  state.roster.splice(i, 1);
-  delete state.rolesCur[admno];
-  commit();
+  state.roster.splice(i, 1); delete state.rolesCur[admno]; commit();
   fs.syncStudentTeam(admno, state.key, null);
   toast("Removed from team.", "danger");
 }
