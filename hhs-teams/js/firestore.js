@@ -67,6 +67,6 @@ export async function syncStudentTeam(adminNo, key, role) {
     const snap = await getDoc(sref);
     if (!snap.exists()) return;
     const rest = (snap.data().teams || []).filter((t) => !(t.teamName === teamName && t.ageGroup === ageGroup));
-    await updateDoc(sref, { teams: role ? [...rest, { teamName, ageGroup, role: role.toLowerCase() }] : rest });
+    await updateDoc(sref, { teams: role ? [...rest, { teamName, ageGroup, role: role }] : rest });
   } catch (e) { console.warn("syncStudentTeam", adminNo, e); }
 }

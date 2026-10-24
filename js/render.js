@@ -621,17 +621,14 @@ export function renderBulkUpdateModal(subjectsList = [], classesList = []) {
  * Renders a single team editing row for a student.
  */
 export function renderTeamRow(studentTeam = {}, availableTeams = []) {
+  
   const selectedTeamName = studentTeam.teamName || "";
   const selectedAgeGroup = studentTeam.ageGroup || "";
   const selectedRole = studentTeam.role || "member";
+  const roles = window.APP_CONFIG.TEAM_ROLES;
 
-  const roles = [
-    "member",
-    "captain",
-    "vice-captain",
-    "leadership",
-    "volunteer",
-  ];
+  r.toLowerCase() === selectedRole.toLowerCase();
+
   const ageGroups = [
     "1st",
     "2nd",
