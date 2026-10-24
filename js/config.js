@@ -19,6 +19,8 @@ window.APP_CONFIG = {
   // Shown when a student has no photo on file, or the image 404s.
   FALLBACK_IMAGE: "assets/no-photo.svg",
 
+  TEAM_ROLES: ["Member", "Captain", "Vice-Captain", "Leadership", "Awarded KZN", "Awarded SA", "Enrichment"],
+
   // Firestore project config (safe to expose client-side; access is
   // controlled by Firestore Security Rules, not by hiding this).
   FIREBASE_CONFIG: {

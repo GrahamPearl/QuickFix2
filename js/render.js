@@ -3,11 +3,27 @@
  * All DOM-building lives here, kept separate from data/search logic.
  */
 const { IMAGE_BASE_URL, FALLBACK_IMAGE } = window.APP_CONFIG;
+import { escapeHtml } from "./html.js";
+const esc = escapeHtml;
 
 export function photoUrl(filename) {
   if (!filename) return FALLBACK_IMAGE;
   return IMAGE_BASE_URL + filename;
 }
+
+// Swaps a broken photo for the student's initials (replaces all inline onerror handlers).
+document.addEventListener(
+  "error",
+  (ev) => {
+    const img = ev.target;
+    if (!(img instanceof HTMLImageElement) || !img.dataset.initials) return;
+    const span = document.createElement("span");
+    span.className = img.dataset.fallbackClass || "avatar-fallback";
+    span.textContent = img.dataset.initials;
+    img.replaceWith(span);
+  },
+  true, // error events don't bubble, so listen in the capture phase
+);
 
 function openPhotoModal(imageUrl) {
   const existing = document.getElementById("photoZoomModal");
@@ -63,21 +79,20 @@ export function renderRow(student) {
   tr.innerHTML = `
     <td class="cell-photo">
       <div class="avatar">
-        <img src="${photoUrl(student.photo)}" alt=""
-             loading="lazy"
-             onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'avatar-fallback',textContent:'${initials(student)}'}))" />
+        <img src="${esc(photoUrl(student.photo))}" alt="" loading="lazy"
+             data-initials="${esc(initials(student))}" />
       </div>
     </td>
     <td class="cell-name">
-      <span class="student-name">${student.firstName} ${student.lastName}</span>
-      <span class="student-sub">${student.registrationClass || ""}</span>
+      <span class="student-name">${esc(student.firstName)} ${esc(student.lastName)}</span>
+      <span class="student-sub">${esc(student.registrationClass)}</span>
     </td>
-    <td class="cell-admin"><span class="mono">${student.adminNo}</span></td>
+    <td class="cell-admin"><span class="mono">${esc(student.adminNo)}</span></td>
     <td class="cell-grade">
-      <span class="pill pill-grade">Gr ${student.grade}</span>
-      <span class="pill pill-class">${student.class}</span>
+      <span class="pill pill-grade">Gr ${esc(student.grade)}</span>
+      <span class="pill pill-class">${esc(student.class)}</span>
     </td>
-    <td class="cell-gender">${student.gender || ""}</td>
+    <td class="cell-gender">${esc(student.gender)}</td>
     <td class="cell-subjects">${subjectBadges(student.subjectsSummary)}</td>
   `;
   return tr;
@@ -99,25 +114,25 @@ export function renderCard(student) {
 
   const imageUrl = photoUrl(student.photo);
 
-  card.innerHTML = `
+   card.innerHTML = `
     <div class="avatar avatar-card"
          style="width: 90px; height: 120px; overflow: hidden; margin: 0 auto;">
       <img
         class="student-photo-preview"
-        src="${imageUrl}"
+        src="${esc(imageUrl)}"
         alt=""
         loading="lazy"
-        data-full-image="${imageUrl}"
+        data-full-image="${esc(imageUrl)}"
+        data-initials="${esc(initials(student))}"
         style="width: 150%; height: 150%; object-fit: cover; cursor: zoom-in;"
-        onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'avatar-fallback',textContent:'${initials(student)}'}))"
       />
     </div>
 
     <span class="card-name" style="display:block; margin-top:8px;">
-      ${student.firstName} ${student.lastName}
+      ${esc(student.firstName)} ${esc(student.lastName)}
     </span>
-    <span class="card-admin mono" style="display: block;">${student.registrationClass}</span>
-    <span class="card-admin mono" style="display: block;">${student.adminNo}</span>
+    <span class="card-admin mono" style="display: block;">${esc(student.registrationClass)}</span>
+    <span class="card-admin mono" style="display: block;">${esc(student.adminNo)}</span>
   `;
 
   const img = card.querySelector(".student-photo-preview");
@@ -164,7 +179,7 @@ export function renderActiveFilters(el, filters) {
     .map(
       ([key, value]) => `
       <span class="chip chip-filter">
-        ${labels[key] ? labels[key](value) : value}
+        ${esc(labels[key] ? labels[key](value) : value)}
         <button type="button" class="chip-remove" data-clear-filter="${key}" aria-label="Clear ${key} filter">&times;</button>
       </span>`,
     )
@@ -192,14 +207,15 @@ export function renderEmptyState(tbody, colSpan) {
 }
 
 export function renderDrawerHeader(student) {
-  return `
+    return `
     <div class="avatar avatar-lg">
-      <img src="${photoUrl(student.photo)}" alt=""
-           onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'avatar-fallback avatar-fallback-lg',textContent:'${initials(student)}'}))" />
+      <img src="${esc(photoUrl(student.photo))}" alt=""
+           data-initials="${esc(initials(student))}"
+           data-fallback-class="avatar-fallback avatar-fallback-lg" />
     </div>
     <div>
-      <h2 class="drawer-name">${student.firstName} ${student.lastName}</h2>
-      <p class="drawer-meta">Admin No <span class="mono">${student.adminNo}</span> · Grade ${student.grade} · ${student.class}</p>
+      <h2 class="drawer-name">${esc(student.firstName)} ${esc(student.lastName)}</h2>
+      <p class="drawer-meta">Admin No <span class="mono">${esc(student.adminNo)}</span> · Grade ${esc(student.grade)} · ${esc(student.class)}</p>
     </div>
   `;
 }
@@ -252,7 +268,7 @@ function renderRoleBadge(role) {
       margin-left: 6px;
       ${badgeStyle}
     ">
-      ${formattedRole}
+      ${esc(formattedRole)}
     </span>
   `;
 }
@@ -280,9 +296,9 @@ export function renderDrawerView(student, isAdmin) {
           const enr = (student.enrollments || {})[key];
           return `
             <tr>
-              <td>${name}</td>
-              <td>${enr?.teacher || "—"}</td>
-              <td>${enr?.line ?? "—"}</td>
+              <td>${esc(name)}</td>
+              <td>${esc(enr?.teacher || "—")}</td>
+              <td>${esc(enr?.line ?? "—")}</td>
             </tr>`;
         })
         .join("")
@@ -306,9 +322,9 @@ export function renderDrawerView(student, isAdmin) {
 
           return `
             <tr>
-              <td>${teamName}</td>
-              <td>${groupName}</td>
-              <td>${formattedRole}</td>
+              <td>${esc(teamName)}</td>
+              <td>${esc(groupName)}</td>
+              <td>${esc(formattedRole)}</td>
             </tr>`;
         })
         .join("")
@@ -327,10 +343,10 @@ export function renderDrawerView(student, isAdmin) {
     }
 
     <dl class="drawer-facts">
-      <div><dt>Registration class</dt><dd>${student.registrationClass || "—"}</dd></div>
-      <div><dt>Gender</dt><dd>${student.gender || "—"}</dd></div>
-      <div><dt>Age group</dt><dd>${student.agegroup || "—"}</dd></div>
-      <div><dt>Birthdate</dt><dd>${student.birthdate || "—"}</dd></div>
+      <div><dt>Registration class</dt><dd>${esc(student.registrationClass || "—")}</dd></div>
+      <div><dt>Gender</dt><dd>${esc(student.gender || "—")}</dd></div>
+      <div><dt>Age group</dt><dd>${esc(student.agegroup || "—")}</dd></div>
+      <div><dt>Birthdate</dt><dd>${esc(student.birthdate || "—")}</dd></div>
     </dl>
 
     <h3 class="drawer-subheading">Subjects</h3>
@@ -380,7 +396,7 @@ export function renderDrawerEdit(
           const subjectOptionsHtml = subjectOptions
             .map(
               (s) =>
-                `<option value="${s}" ${s === currentSub ? "selected" : ""}>${s}</option>`,
+                `<option value="${esc(s)}" ${s === currentSub ? "selected" : ""}>${esc(s)}</option>`,
             )
             .join("");
 
@@ -391,27 +407,27 @@ export function renderDrawerEdit(
           const teacherOptionsHtml = teachersList
             .map(
               (t) =>
-                `<option value="${t}" ${t === currentTeacher ? "selected" : ""}>${t}</option>`,
+                `<option value="${esc(t)}" ${t === currentTeacher ? "selected" : ""}>${esc(t)}</option>`,
             )
             .join("");
 
           return `
             <div class="edit-subject-row" data-index="${index}" style="display: flex; gap: 8px; margin-bottom: 8px; align-items: center;">
               <!-- (a) Swap Subject Dropdown -->
-              <select class="edit-subject-select" data-old-subject="${currentSub}" style="flex: 2;">
+              <select class="edit-subject-select" data-old-subject="${esc(currentSub)}" style="flex: 2;">
                 ${subjectOptionsHtml}
               </select>
 
               <!-- (b) Swap Teacher Dropdown -->
-              <select class="edit-teacher-select" data-subject-key="${key}" style="flex: 2;">
+              <select class="edit-teacher-select" data-subject-key="${esc(key)}" style="flex: 2;">
                 <option value="">Select teacher...</option>
                 ${teacherOptionsHtml}
               </select>
 
               <!-- (c) Change Subject Line Input -->
-              <input type="number" class="edit-line-input" data-subject-key="${key}" value="${currentLine}" min="1" max="10" placeholder="Line" style="width: 70px;" title="Subject Line Number" />
+              <input type="number" class="edit-line-input" data-subject-key="${esc(key)}" value="${esc(currentLine)}" min="1" max="10" placeholder="Line" style="width: 70px;" title="Subject Line Number" />
 
-              <button type="button" class="btn btn-ghost btn-sm chip-remove" data-remove-subject="${currentSub}" title="Remove subject">&times;</button>
+              <button type="button" class="btn btn-ghost btn-sm chip-remove" data-remove-subject="${esc(currentSub)}" title="Remove subject">&times;</button>
             </div>`;
         })
         .join("")
@@ -429,21 +445,21 @@ export function renderDrawerEdit(
       <div class="edit-grid">
         <div>
           <label for="editFirstName">First name</label>
-          <input id="editFirstName" data-field="firstName" type="text" value="${draft.firstName}" required />
+          <input id="editFirstName" data-field="firstName" type="text" value="${esc(draft.firstName)}" required />
         </div>
         <div>
           <label for="editLastName">Last name</label>
-          <input id="editLastName" data-field="lastName" type="text" value="${draft.lastName}" required />
+          <input id="editLastName" data-field="lastName" type="text" value="${esc(draft.lastName)}" required />
         </div>
         <div>
           <label for="editGrade">Grade</label>
           <select id="editGrade" data-field="grade">
-            ${[8, 9, 10, 11, 12].map((g) => `<option value="${g}" ${Number(draft.grade) === g ? "selected" : ""}>${g}</option>`).join("")}
+            ${[8, 9, 10, 11, 12].map((g) => `<option value="${esc(g)}" ${esc(Number(draft.grade)) === g ? "selected" : ""}>${esc(g)}</option>`).join("")}
           </select>
         </div>
         <div>
           <label for="editClass">Class</label>
-          <input id="editClass" data-field="class" type="text" value="${draft.class}" required />
+          <input id="editClass" data-field="class" type="text" value="${esc(draft.class)}" required />
         </div>
         <div>
           <label for="editGender">Gender</label>
@@ -490,7 +506,7 @@ export function renderAddStudentForm(
         
         <div style="margin-bottom: 16px;">
           <label for="newAdminNo">Admin Number</label>
-          <input id="newAdminNo" type="text" value="${adminNoValue}" required autocomplete="off" />
+          <input id="newAdminNo" type="text" value="${esc(adminNoValue)}" required autocomplete="off" />
         </div>
 
         <p id="step1Error" class="error-text"></p>
@@ -504,13 +520,13 @@ export function renderAddStudentForm(
 
   // Step 2: Capture remaining details & subjects
   const availableSubjectsHtml = subjectOptions
-    .map((s) => `<option value="${s}">${s}</option>`)
+    .map((s) => `<option value="${esc(s)}">${esc(s)}</option>`)
     .join("");
 
   return `
     <form id="addStudentStep2Form" class="edit-form">
       <h3 class="drawer-subheading">Add New Student: Step 2</h3>
-      <p class="drawer-meta">Admin No: <span class="mono"><strong>${adminNoValue}</strong></span></p>
+      <p class="drawer-meta">Admin No: <span class="mono"><strong>${esc(adminNoValue)}</strong></span></p>
 
       <div class="edit-grid">
         <div>
@@ -621,13 +637,11 @@ export function renderBulkUpdateModal(subjectsList = [], classesList = []) {
  * Renders a single team editing row for a student.
  */
 export function renderTeamRow(studentTeam = {}, availableTeams = []) {
-  
   const selectedTeamName = studentTeam.teamName || "";
   const selectedAgeGroup = studentTeam.ageGroup || "";
   const selectedRole = studentTeam.role || "member";
   const roles = window.APP_CONFIG.TEAM_ROLES;
-
-  r.toLowerCase() === selectedRole.toLowerCase();
+  const isSelected = (r) => r.toLowerCase() === selectedRole.toLowerCase();
 
   const ageGroups = [
     "1st",
@@ -695,7 +709,7 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
           ${roles
             .map(
               (r) => `
-            <option value="${r}" ${r === selectedRole ? "selected" : ""}>
+            <option value="${r}" ${isSelected(r) ? "selected" : ""}>
               ${r.charAt(0).toUpperCase() + r.slice(1)}
             </option>
           `,
