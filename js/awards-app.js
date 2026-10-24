@@ -3,6 +3,7 @@
  * Wires auth gate, recommend form, and the review list.
  * Depends on data-service.js patch: getAllTeams(), patchCachedStudent().
  */
+import { escapeHtml } from ".js/html.js";
 import { onAuthChange, signInStaff, signOutStaff } from "./auth-service.js";
 import { getAllStudents, getAllTeams, patchCachedStudent } from "./data-service.js";
 import { filterStudents, sortStudents } from "./search.js";

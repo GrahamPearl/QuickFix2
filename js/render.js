@@ -34,7 +34,7 @@ function openPhotoModal(imageUrl) {
   document.body.appendChild(modal);
 
   backdrop.addEventListener("click", () => modal.remove());
-  content.addEventListener("click", e => e.stopPropagation());
+  content.addEventListener("click", (e) => e.stopPropagation());
 }
 
 function initials(s) {
@@ -45,10 +45,14 @@ function subjectBadges(subjects, max = 3) {
   if (!subjects || !subjects.length) {
     return `<span class="badge badge-muted">No subjects on file</span>`;
   }
-  const shown = subjects.slice(0, max).map((s) => `<span class="badge">${s}</span>`).join("");
-  const overflow = subjects.length > max
-    ? `<span class="badge badge-muted">+${subjects.length - max} more</span>`
-    : "";
+  const shown = subjects
+    .slice(0, max)
+    .map((s) => `<span class="badge">${s}</span>`)
+    .join("");
+  const overflow =
+    subjects.length > max
+      ? `<span class="badge badge-muted">+${subjects.length - max} more</span>`
+      : "";
   return shown + overflow;
 }
 
@@ -123,7 +127,7 @@ export function renderCard(student) {
     e.stopPropagation();
 
     openPhotoModal(imageUrl); // <--- Updated here
-});
+  });
 
   return card;
 }
@@ -151,6 +155,9 @@ export function renderActiveFilters(el, filters) {
     gender: (v) => v,
     subject: (v) => v,
     teacher: (v) => `Taught by ${v}`,
+    line: (v) => `Line ${v}`,
+    team: (v) => v,
+    ageGroup: (v) => `Age group ${v}`,
   };
   const chips = Object.entries(filters)
     .filter(([, v]) => v)
@@ -166,9 +173,10 @@ export function renderActiveFilters(el, filters) {
 }
 
 export function renderResultCount(el, count, total) {
-  el.textContent = count === total
-    ? `${total} student${total === 1 ? "" : "s"}`
-    : `${count} of ${total} students`;
+  el.textContent =
+    count === total
+      ? `${total} student${total === 1 ? "" : "s"}`
+      : `${count} of ${total} students`;
 }
 
 export function renderEmptyState(tbody, colSpan) {
@@ -220,14 +228,18 @@ function renderRoleBadge(role) {
   const normalizedRole = role.toLowerCase();
 
   // Highlight leadership/captain roles differently from volunteer/other roles
-  let badgeStyle = "background-color: #f1f3f4; color: #5f6368; border: 1px solid #dadce0;";
+  let badgeStyle =
+    "background-color: #f1f3f4; color: #5f6368; border: 1px solid #dadce0;";
 
   if (normalizedRole === "captain" || normalizedRole === "vice-captain") {
-    badgeStyle = "background-color: #e8f0fe; color: #1a73e8; border: 1px solid #aecbfa;";
+    badgeStyle =
+      "background-color: #e8f0fe; color: #1a73e8; border: 1px solid #aecbfa;";
   } else if (normalizedRole === "leadership") {
-    badgeStyle = "background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf;";
+    badgeStyle =
+      "background-color: #fce8e6; color: #c5221f; border: 1px solid #fad2cf;";
   } else if (normalizedRole === "volunteer") {
-    badgeStyle = "background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6;";
+    badgeStyle =
+      "background-color: #e6f4ea; color: #137333; border: 1px solid #ceead6;";
   }
 
   return `
@@ -282,7 +294,7 @@ export function renderDrawerView(student, isAdmin) {
     ? teams
         .map((t) => {
           const rawTeam = t.teamName || t.team || "";
-          
+
           // Split on '||'
           const parts = rawTeam.split("||").map((s) => s.trim());
           const teamName = parts[0] || rawTeam || "—";
@@ -348,10 +360,14 @@ export function renderDrawerView(student, isAdmin) {
 }
 
 /** Editable form: field inputs + removable subject chips + add-subject row. */
-// Helper inside render.js to extract unique teachers for a given subject from global roster if needed, 
+// Helper inside render.js to extract unique teachers for a given subject from global roster if needed,
 // or you can pass a teacher lookup map. For simplicity, we can generate options dynamically.
 
-export function renderDrawerEdit(draft, subjectOptions, allTeachersBySubject = {}) {
+export function renderDrawerEdit(
+  draft,
+  subjectOptions,
+  allTeachersBySubject = {},
+) {
   const subjectRows = (draft.subjectsSummary || []).length
     ? draft.subjectsSummary
         .map((currentSub, index) => {
@@ -362,13 +378,21 @@ export function renderDrawerEdit(draft, subjectOptions, allTeachersBySubject = {
 
           // Options for swapping the subject
           const subjectOptionsHtml = subjectOptions
-            .map((s) => `<option value="${s}" ${s === currentSub ? "selected" : ""}>${s}</option>`)
+            .map(
+              (s) =>
+                `<option value="${s}" ${s === currentSub ? "selected" : ""}>${s}</option>`,
+            )
             .join("");
 
           // Get teachers available for this specific subject
-          const teachersList = allTeachersBySubject[currentSub] || [currentTeacher].filter(Boolean);
+          const teachersList =
+            allTeachersBySubject[currentSub] ||
+            [currentTeacher].filter(Boolean);
           const teacherOptionsHtml = teachersList
-            .map((t) => `<option value="${t}" ${t === currentTeacher ? "selected" : ""}>${t}</option>`)
+            .map(
+              (t) =>
+                `<option value="${t}" ${t === currentTeacher ? "selected" : ""}>${t}</option>`,
+            )
             .join("");
 
           return `
@@ -393,8 +417,12 @@ export function renderDrawerEdit(draft, subjectOptions, allTeachersBySubject = {
         .join("")
     : `<p class="empty-hint">No subjects assigned.</p>`;
 
-  const availableToAdd = subjectOptions.filter((s) => !draft.subjectsSummary.includes(s));
-  const addOptionsHtml = availableToAdd.map((s) => `<option value="${s}">${s}</option>`).join("");
+  const availableToAdd = subjectOptions.filter(
+    (s) => !draft.subjectsSummary.includes(s),
+  );
+  const addOptionsHtml = availableToAdd
+    .map((s) => `<option value="${s}">${s}</option>`)
+    .join("");
 
   return `
     <form id="editForm" class="edit-form">
@@ -448,7 +476,12 @@ export function renderDrawerEdit(draft, subjectOptions, allTeachersBySubject = {
   `;
 }
 
-export function renderAddStudentForm(step = 1, adminNoValue = "", studentData = {}, subjectOptions = []) {
+export function renderAddStudentForm(
+  step = 1,
+  adminNoValue = "",
+  studentData = {},
+  subjectOptions = [],
+) {
   if (step === 1) {
     return `
       <form id="addStudentStep1Form" class="edit-form">
@@ -592,8 +625,36 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
   const selectedAgeGroup = studentTeam.ageGroup || "";
   const selectedRole = studentTeam.role || "member";
 
-  const roles = ["member", "captain", "vice-captain", "leadership", "volunteer"];
-  const ageGroups = ["1st", "2nd", "Grade 8", "Grade 9", "Grade 10", "Grade 11", "Grade 12", "U14", "U15", "U16", "U17", "U18", "U19", "Open", "Junior", "Senior"];
+  const roles = [
+    "member",
+    "captain",
+    "vice-captain",
+    "leadership",
+    "volunteer",
+  ];
+  const ageGroups = [
+    "1st",
+    "2nd",
+    "Grade 8",
+    "Grade 9",
+    "Grade 10",
+    "Grade 11",
+    "Grade 12",
+    "U14",
+    "U15",
+    "U16",
+    "U17",
+    "U18",
+    "U19",
+    "Open",
+    "Junior",
+    "Senior",
+  ];
+
+  const team = availableTeams.find((t) => t.teamName === selectedTeamName);
+  const groups = team ? Object.keys(team.ageGroups) : [];
+  if (selectedAgeGroup && !groups.includes(selectedAgeGroup))
+    groups.push(selectedAgeGroup);
 
   return `
     <div class="team-edit-row" style="display: flex; gap: 8px; align-items: center; margin-bottom: 12px;">
@@ -603,11 +664,15 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
         <label style="font-size: 0.75rem; font-weight: 600;">Team</label>
         <select class="form-control team-select" required style="width: 100%;">
           <option value="">Select Team...</option>
-          ${availableTeams.map(t => `
+          ${availableTeams
+            .map(
+              (t) => `
             <option value="${t.id || t.teamName}" ${t.teamName === selectedTeamName ? "selected" : ""}>
               ${t.teamName}
             </option>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </select>
       </div>
 
@@ -616,9 +681,13 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
         <label style="font-size: 0.75rem; font-weight: 600;">Group</label>
         <select class="form-control team-group-select" required style="width: 100%;">
           <option value="">Select Group...</option>
-          ${ageGroups.map(g => `
+          ${ageGroups
+            .map(
+              (g) => `
             <option value="${g}" ${g === selectedAgeGroup ? "selected" : ""}>${g}</option>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </select>
       </div>
 
@@ -626,11 +695,15 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
       <div style="flex: 1.5;">
         <label style="font-size: 0.75rem; font-weight: 600;">Role</label>
         <select class="form-control student-role-select" required style="width: 100%;">
-          ${roles.map(r => `
+          ${roles
+            .map(
+              (r) => `
             <option value="${r}" ${r === selectedRole ? "selected" : ""}>
               ${r.charAt(0).toUpperCase() + r.slice(1)}
             </option>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </select>
       </div>
 
@@ -641,38 +714,6 @@ export function renderTeamRow(studentTeam = {}, availableTeams = []) {
         </button>
       </div>
 
-    </div>
-  `;
-}
-
-export function renderUserManagementModal(usersList = []) {
-  return `
-    <div class="modal-backdrop" id="userModalBackdrop">
-      <div class="modal-content" style="max-width: 600px; background: white; padding: 24px; border-radius: 8px;">
-        <h3>User Access Management</h3>
-        <p class="empty-hint">Add or edit authorized user roles (Admin & Head Staff only).</p>
-        
-        <form id="saveUserForm" style="margin-top: 16px;">
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label>User Email or UID</label>
-            <input type="text" id="targetUserId" class="form-control" placeholder="user@school.edu" required style="width:100%;" />
-          </div>
-          <div class="form-group" style="margin-bottom: 12px;">
-            <label>Access Type / Role</label>
-            <select id="targetUserType" class="form-control" required style="width:100%;">
-              <option value="staff">Staff (Search queries)</option>
-              <option value="slt">SLT (Search queries)</option>
-              <option value="staffhead">Head Staff (Search + User Management)</option>
-              <option value="admin">Admin (Full Access)</option>
-            </select>
-          </div>
-          <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
-            <button type="button" id="closeUserModalBtn" class="btn btn-secondary">Cancel</button>
-            <button type="submit" class="btn btn-primary">Save User Access</button>
-          </div>
-        </form>
-        <p id="userModalError" class="error-text" style="color: #dc3545; margin-top: 8px;"></p>
-      </div>
     </div>
   `;
 }

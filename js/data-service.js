@@ -12,8 +12,8 @@
 import { db, collection, getDocs } from "./firebase-init.js";
 
 
-const CACHE_KEY = STUDENTS_COLLECTION; //"hhs_students_cache_v1";
 const { CACHE_TTL_MS, STUDENTS_COLLECTION } = window.APP_CONFIG;
+const CACHE_KEY = `hhs_cache_${STUDENTS_COLLECTION}_v1`;
 
 let memoryCache = null; // array of student objects, held for the page's lifetime
 
@@ -41,7 +41,7 @@ function writeSessionCache(students) {
 }
 
 async function fetchFromFirestore() {
-  const snapshot = await getDocs(collection(db, "students"));
+  const snapshot = await getDocs(collection(db, STUDENTS_COLLECTION));
   const students = [];
   snapshot.forEach((doc) => {
     students.push({

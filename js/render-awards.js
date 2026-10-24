@@ -4,15 +4,7 @@
  * All user-supplied text goes through escapeHtml().
  */
 import { levelLabel } from "./awards-form.js";
-
-export function escapeHtml(value) {
-  return String(value ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+import { escapeHtml } from "./html.js";
 
 function formatTimestamp(ts) {
   const d = ts?.toDate ? ts.toDate() : null;

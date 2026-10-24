@@ -8,7 +8,7 @@
       "description": "Full access: edit students, bulk update, manage teams, manage users.",
       "permissions": {
         "view": true,
-        "viewTeams" : true,
+        "viewTeams": true,
         "edit": true,
         "addStudent": true,
         "bulkUpdate": true,
@@ -43,6 +43,9 @@
       "description": "Full access: edit students, manage teams.",
       "permissions": {
         "view": true,
+        "viewTeams": true,
+        "editTeams": true,
+        "teamsAdmin": false,
         "edit": true,
         "addStudent": true,
         "bulkUpdate": false,
@@ -53,7 +56,7 @@
         { "label": "Awards", "href": "awards.html" }
       ]
     },
-     "staff-office": {
+    "staff-office": {
       "label": "Staff - Office",
       "level": 0,
       "description": "Partial access: view students, view teams, view awards.",
@@ -80,9 +83,7 @@
         "bulkUpdate": false,
         "manageUsers": false
       },
-      "links": [
-        { "label": "Teams", "href": "hhs-teams/teams.html" }
-      ]
+      "links": [{ "label": "Teams", "href": "hhs-teams/teams.html" }]
     },
     "slt": {
       "label": "SLT",
@@ -95,9 +96,7 @@
         "bulkUpdate": false,
         "manageUsers": false
       },
-      "links": [
-        { "label": "Teams", "href": "hhs-teams/teams.html" }
-      ]
+      "links": [{ "label": "Teams", "href": "hhs-teams/teams.html" }]
     }
   }
 }

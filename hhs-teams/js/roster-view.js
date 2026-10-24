@@ -23,7 +23,7 @@ function card(admno) {
       <div class="avatar"><div class="avatar-fallback"><i class="fa-solid fa-user-slash"></i></div></div>
       <div class="badge-row">${badge}</div>
       <div class="card-info"><div class="s-name">Unknown</div><div class="s-admno">${esc(admno)}</div>
-      <div class="s-class">Not in students.json</div>${roleSelect(admno, role)}</div></div>`;
+      <div class="s-class">Not in the student roster</div>${roleSelect(admno, role)}</div></div>`;
   const photo = `${CONFIG.PHOTO_BASE_URL}${encodeURI(s.photo || "")}`;
   const initials = (s.firstName?.[0] || "") + (s.lastName?.[0] || "");
   return `<div class="student-card" data-adm="${esc(admno)}">${remove}

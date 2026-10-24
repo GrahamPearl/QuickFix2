@@ -2,7 +2,6 @@ import {
   db,
   doc,
   updateDoc,
-  setDoc,
   writeBatch,
   collection,
   getDocs,
@@ -36,7 +35,8 @@ import {
   renderDrawerEdit,
   renderAddStudentForm,
   renderBulkUpdateModal,
-  renderTeamRow, // <--- CRITICAL IMPORT FIX
+  renderTeamRow,
+  renderActiveFilters,
 } from "./render.js";
 
 import {
@@ -115,11 +115,6 @@ let newStudentDraft = {};
 let currentTeamsStudentAdminNo = null;
 let allAvailableTeams = [];
 
-// near the other state variables
-let rosterLoaded = false;
-let resolveAuthReady;
-const authReady = new Promise((r) => (resolveAuthReady = r));
-
 const LOADING_HTML = `<span class="spinner" aria-hidden="true"></span><span>Loading student roster…</span>`;
 
 let currentUser = null;
@@ -127,11 +122,8 @@ let userType = null;
 let userTypes = null;
 
 function showAuthError(msg) {
-  const el =
-    document.getElementById("authError") ||
-    createAuthErrorElement(els.authForm);
+  const el = document.getElementById("authError") || createAuthErrorElement(els.authForm);
   el.textContent = msg;
-  els.authPopover?.classList.remove("is-hidden");
 }
 
 function showLoginRequired() {
@@ -274,10 +266,7 @@ onAuthStateChanged(auth, async (user) => {
   runSearch();
 });
 
-function focusLogin() {
-  els.authPopover?.classList.remove("is-hidden");
-  els.authEmail?.focus();
-}
+function focusLogin() { els.authEmail?.focus(); }
 
 async function loadRoster({ forceRefresh = false } = {}) {
   const raw = await getAllStudents({ forceRefresh });
@@ -306,7 +295,8 @@ function runSearch() {
   }
 
   renderResultCount(els.resultCount, results.length, roster.length);
-  renderActiveFilters();
+  const { term, field, ...filters } = state();
+  renderActiveFilters(document.getElementById("activeFilters"), filters);
 
   if (results.length === 0) {
     if (currentLayout === "list") {
@@ -326,13 +316,24 @@ function runSearch() {
 
 async function loadAvailableTeams() {
   try {
-    const [snap, metaSnap] = await Promise.all([getDocs(collection(db, "teams")), getDoc(doc(db, "teams", "_metadata"))]);
-    const hidden = new Set(metaSnap.exists() ? metaSnap.data().hidden || [] : []);
+    const [snap, metaSnap] = await Promise.all([
+      getDocs(collection(db, "teams")),
+      getDoc(doc(db, "teams", "_metadata")),
+    ]);
+    const hidden = new Set(
+      metaSnap.exists() ? metaSnap.data().hidden || [] : [],
+    );
     allAvailableTeams = snap.docs
       .filter((d) => !d.id.startsWith("_") && !d.id.includes("||"))
       .map((d) => {
         const x = d.data();
-        return { id: d.id, teamName: x.teamName || d.id, ageGroups: Object.fromEntries(Object.keys(x.ageGroups || {}).map((g) => [g, true])) };
+        return {
+          id: d.id,
+          teamName: x.teamName || d.id,
+          ageGroups: Object.fromEntries(
+            Object.keys(x.ageGroups || {}).map((g) => [g, true]),
+          ),
+        };
       })
       .filter((t) => !hidden.has(t.teamName))
       .sort((a, b) => a.teamName.localeCompare(b.teamName));
@@ -557,6 +558,22 @@ async function wireEvents() {
     e.preventDefault();
     runSearch();
   });
+
+  els.resultsGrid.addEventListener("click", (e) => {
+    const card = e.target.closest(".student-card");
+    if (card) openDrawer(card.dataset.adminNo);
+  });
+
+  document.getElementById("activeFilters").addEventListener("click", (e) => {
+    const key = e.target.closest("[data-clear-filter]")?.dataset.clearFilter;
+    if (!key || !els[key]) return;
+    els[key].value = "";
+    if (key === "grade") refreshClassOptions();
+    if (key === "subject") refreshTeacherOptions();
+    if (key === "team") refreshAgeGroupOptions();
+    runSearch();
+  });
+
   els.query.addEventListener("input", debounce(runSearch, 150));
   els.field.addEventListener("change", runSearch);
   els.gender.addEventListener("change", runSearch);
@@ -610,19 +627,6 @@ async function wireEvents() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeDrawer();
   });
-
-  if (els.authToggleBtn && els.authPopover) {
-    els.authToggleBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      els.authPopover.classList.toggle("is-hidden");
-    });
-
-    document.addEventListener("click", (e) => {
-      if (els.authWidget && !els.authWidget.contains(e.target)) {
-        els.authPopover.classList.add("is-hidden");
-      }
-    });
-  }
 
   els.openFiltersBtn.addEventListener("click", () => {
     els.filterModal.classList.toggle("is-hidden");
