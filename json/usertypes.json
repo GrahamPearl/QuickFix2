@@ -12,13 +12,15 @@
         "edit": true,
         "addStudent": true,
         "bulkUpdate": true,
-        "manageUsers": true
+        "manageUsers": true,
+        "editTimetable": true
       },
       "links": [
         { "label": "Teams", "href": "hhs-teams/teams.html" },
         { "label": "Awards", "href": "awards.html" },
         { "label": "Manage users", "href": "admin_users.html" },
-        { "label": "Seating plans", "href": "seating-class.html" }
+        { "label": "Seating plans", "href": "seating-class.html" },
+        { "label": "Seating plans", "href": "seating-teacher.html" }
       ]
     },
     "staff-head": {

@@ -727,3 +727,38 @@ body.is-locked #printCardsBtn { display: none !important; }
 .auth-widget[data-user-type="staff"] .admin-badge { background: rgba(255, 255, 255, 0.08); color: var(--gold-soft); }
 
 .header-spacer { flex: 1; }
+/* Modal wrapper (timetable + student teams) */
+.modal-wrapper { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-start;
+  justify-content: center; padding: 6vh 20px; overflow-y: auto; }
+.modal-wrapper.is-hidden { display: none; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(22,35,63,.45); }
+.modal-wrapper .modal-card { position: relative; transform: none; }
+.modal-card-wide { width: min(980px, 100%); }
+.modal-subtitle { margin: 2px 0 0; font-size: .82rem; color: var(--text-muted); }
+.btn-group { display: inline-flex; gap: 6px; }
+.btn-outline { background: #fff; }
+.btn-secondary { background: var(--paper); }
+.btn-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--text-muted); }
+#ttGradeSelect { width: auto; margin-top: 6px; }
+
+/* Timetable */
+.timetable-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  flex-wrap: wrap; margin-bottom: 12px; }
+.tt-edit-badge { font-size: .72rem; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  background: var(--gold-soft); color: #6b4a14; }
+.tt-grid-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.tt-grid-container { overflow-x: auto; }
+.tt-table { width: 100%; border-collapse: collapse; }
+.tt-table th, .tt-table td { border: 1px solid var(--line); padding: 8px; text-align: center; font-size: .85rem; }
+.tt-table th { background: var(--paper); font-size: .7rem; text-transform: uppercase; color: var(--text-muted); }
+.tt-day-label { font-weight: 600; background: var(--paper); white-space: nowrap; }
+.tt-cell-input { width: 56px; text-align: center; padding: 6px; }
+.tt-cell-input.invalid-cell { border-color: var(--maroon); background: #f3dcdc; }
+.tt-badge-subject { display: block; font-weight: 600; color: var(--ink); }
+.tt-teacher { display: block; font-size: .72rem; color: var(--text-muted); }
+.tt-badge-none { color: var(--line-strong); }
+.tt-badge-not-enrolled { font-size: .75rem; color: var(--text-muted); font-style: italic; }
+.tt-status-notice { padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; font-size: .85rem; font-weight: 600; }
+.tt-status-notice.error { background: #f3dcdc; color: var(--maroon); }
+.tt-status-notice.success { background: #dcefe0; color: #2f6b3a; }
+.tt-meta-info { font-size: .8rem; color: var(--text-muted); align-self: center; }

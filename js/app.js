@@ -23,6 +23,11 @@ import {
 } from "./data-service.js";
 
 import { filterStudents, sortStudents } from "./search.js";
+import {
+  initTimetableModule,
+  openStudentTimetableModal,
+  openGradeTimetableModal,
+} from "./timetable.js";
 
 import {
   renderRows,
@@ -122,7 +127,9 @@ let userType = null;
 let userTypes = null;
 
 function showAuthError(msg) {
-  const el = document.getElementById("authError") || createAuthErrorElement(els.authForm);
+  const el =
+    document.getElementById("authError") ||
+    createAuthErrorElement(els.authForm);
   el.textContent = msg;
 }
 
@@ -179,6 +186,10 @@ function applyAuthUi(user) {
 
   document.getElementById("loginGate")?.classList.toggle("is-hidden", signedIn);
   document.body.classList.toggle("is-locked", !signedIn);
+  document
+    .getElementById("openTimetableBtn")
+    ?.classList.toggle("is-hidden", !can(userTypes, userType, "editTimetable"));
+
   els.authWidget.dataset.userType = signedIn ? userType || "" : "";
 
   if (els.adminBadge) {
@@ -198,6 +209,7 @@ function applyAuthUi(user) {
   );
   renderAuthLinks(signedIn ? def : null);
 }
+
 function setAuthStatus(msg) {
   const el = document.getElementById("authStatus");
   if (el) el.textContent = msg;
@@ -266,7 +278,9 @@ onAuthStateChanged(auth, async (user) => {
   runSearch();
 });
 
-function focusLogin() { els.authEmail?.focus(); }
+function focusLogin() {
+  els.authEmail?.focus();
+}
 
 async function loadRoster({ forceRefresh = false } = {}) {
   const raw = await getAllStudents({ forceRefresh });
@@ -698,6 +712,16 @@ async function wireEvents() {
 
   // Combined Drawer Content Click Handler (Edit Student AND Manage Teams)
   els.drawerContent.addEventListener("click", (e) => {
+    if (e.target.closest("#openStudentTimetableBtn")) {
+      const s = roster.find(
+        (x) => String(x.adminNo) === String(els.drawer.dataset.activeAdminNo),
+      );
+      if (s)
+        openStudentTimetableModal(s, {
+          canEdit: can(userTypes, userType, "editTimetable"),
+        });
+    }
+
     if (
       e.target.id === "editStudentBtn" ||
       e.target.closest("#editStudentBtn")
@@ -1341,6 +1365,11 @@ if (signOutBtn) {
 
 function init() {
   wireEvents();
+  initTimetableModule();
+  document.getElementById("openTimetableBtn")?.addEventListener("click", () => {
+    if (!can(userTypes, userType, "editTimetable")) return;
+    openGradeTimetableModal(8, { canEdit: true });
+  });
 }
 
 init();

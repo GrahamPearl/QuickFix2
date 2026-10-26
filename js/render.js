@@ -342,6 +342,10 @@ export function renderDrawerView(student, isAdmin) {
         : ""
     }
 
+    <div style="margin-bottom:16px;">
+      <button type="button" id="openStudentTimetableBtn" class="btn" style="width:100%;">🗓 View timetable</button>
+    </div>
+
     <dl class="drawer-facts">
       <div><dt>Registration class</dt><dd>${esc(student.registrationClass || "—")}</dd></div>
       <div><dt>Gender</dt><dd>${esc(student.gender || "—")}</dd></div>
