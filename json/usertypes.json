@@ -17,7 +17,8 @@
       "links": [
         { "label": "Teams", "href": "hhs-teams/teams.html" },
         { "label": "Awards", "href": "awards.html" },
-        { "label": "Manage users", "href": "admin_users.html" }
+        { "label": "Manage users", "href": "admin_users.html" },
+        { "label": "Seating plans", "href": "seating-class.html" }
       ]
     },
     "staff-head": {
