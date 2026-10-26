@@ -7,10 +7,10 @@ import { db, doc, getDoc, setDoc, auth } from "./firebase-init.js";
 import { escapeHtml } from "./html.js";
 let currentGrade = null;
 let canEditNow = false;
+let openSeq = 0;
 
 const DEFAULT_DAYS = 5;
 const DEFAULT_PERIODS = 6;
-
 
 let currentStudent = null;
 let currentTimetableData = null;
@@ -113,52 +113,36 @@ export function buildLineToSubjectMap(student) {
 const currentLineMap = () =>
   currentStudent ? buildLineToSubjectMap(currentStudent) : null;
 
+function cellHtml(lineVal, lineMap) {
+  if (lineVal === -1) return `<span class="tt-badge-none">-</span>`;
+  if (!lineMap) return `<span class="tt-badge-subject">Line ${lineVal}</span>`;
+  const hit = lineMap[lineVal];
+  if (!hit) return `<span class="tt-badge-not-enrolled">Not Enrolled</span>`;
+  return (
+    `<span class="tt-badge-subject">${escapeHtml(hit.subject)}</span>` +
+    (hit.teacher
+      ? `<span class="tt-teacher">${escapeHtml(hit.teacher)}</span>`
+      : "")
+  );
+}
+
 function renderGridUI(days, periods, grid, lineMap = null) {
   const header = document.getElementById("ttGridHeader");
   const body = document.getElementById("ttGridBody");
 
   let headerHtml = "<tr><th>Day</th>";
-  for (let p = 0; p < periods; p++) {
-    headerHtml += `<th>Period ${p + 1}</th>`;
-  }
-  headerHtml += "</tr>";
-  header.innerHTML = headerHtml;
+  for (let p = 0; p < periods; p++) headerHtml += `<th>Period ${p + 1}</th>`;
+  header.innerHTML = headerHtml + "</tr>";
 
   let bodyHtml = "";
   for (let d = 0; d < days; d++) {
     bodyHtml += `<tr><td class="tt-day-label">Day ${d + 1}</td>`;
     for (let p = 0; p < periods; p++) {
-      const lineVal =
-        grid[d] && grid[d][p] !== undefined ? Number(grid[d][p]) : -1;
-
-      if (isEditMode) {
-        bodyHtml += `
-          <td>
-            <input 
-              type="text" 
-              id="tt_cell_${d}_${p}" 
-              class="tt-cell-input" 
-              value="${lineVal}" 
-              autocomplete="off"
-            />
-          </td>`;
-      } else {
-        let displayHtml = "";
-        if (lineVal === -1) {
-          displayHtml = `<span class="tt-badge-none">-</span>`;
-        } else if (!lineMap) {
-          displayHtml = `<span class="tt-badge-subject">Line ${lineVal}</span>`;
-        } else if (lineMap[lineVal]) {
-          const { subject, teacher } = lineMap[lineVal];
-          displayHtml =
-            `<span class="tt-badge-subject">${escapeHtml(subject)}</span>` +
-            (teacher
-              ? `<span class="tt-teacher">${escapeHtml(teacher)}</span>`
-              : "");
-        } else {
-          displayHtml = `<span class="tt-badge-not-enrolled">Not Enrolled</span>`;
-        }
-      }
+      const raw = grid[d] && grid[d][p] !== undefined ? Number(grid[d][p]) : -1;
+      const lineVal = Number.isFinite(raw) ? raw : -1;
+      bodyHtml += isEditMode
+        ? `<td><input type="text" id="tt_cell_${d}_${p}" class="tt-cell-input" value="${lineVal}" autocomplete="off" /></td>`
+        : `<td>${cellHtml(lineVal, lineMap)}</td>`;
     }
     bodyHtml += "</tr>";
   }
@@ -195,10 +179,12 @@ function validateInputs(days, periods) {
 
       const num = Number(val);
       if (isNaN(val) || !Number.isInteger(num)) {
-        input.classList.add("invalid-cell");
-        isValid = false;
-        if (!errorMsg) {
-          errorMsg = `Invalid line "${val}" at Day ${d + 1}, Period ${p + 1}. Integers only.`;
+        const MAX_LINE = 10; // matches max="10" on the edit-line input in render.js; adjust to your real number of lines
+        if (num !== -1 && (num < 1 || num > MAX_LINE)) {
+          input.classList.add("invalid-cell");
+          isValid = false;
+          if (!errorMsg)
+            errorMsg = `Line must be -1 (free) or 1–${MAX_LINE} at Day ${d + 1}, Period ${p + 1}.`;
         }
       }
     }
@@ -211,6 +197,8 @@ function validateInputs(days, periods) {
  * Visibility of #ttEditBtn is controlled by app.js before opening
  */
 async function openModal(grade, student, canEdit) {
+  const mine = ++openSeq;
+
   currentStudent = student;
   currentGrade = Number(grade);
   canEditNow = canEdit;
@@ -236,12 +224,14 @@ async function openModal(grade, student, canEdit) {
     noticeEl = $("ttStatusNotice");
   try {
     currentTimetableData = await getTimetableForGrade(grade);
+    if (mine !== openSeq) return;
     renderGridUI(
       currentTimetableData.days,
       currentTimetableData.periods,
       currentTimetableData.grid,
       currentLineMap(),
     );
+
     metaEl.textContent =
       currentTimetableData.existsInDb && currentTimetableData.updatedAt
         ? `Grade ${grade} schedule · Last updated ${new Date(currentTimetableData.updatedAt).toLocaleDateString()}`
@@ -279,7 +269,9 @@ export function initTimetableModule() {
   const addPeriodBtn = document.getElementById("ttAddPeriodBtn");
   const removePeriodBtn = document.getElementById("ttRemovePeriodBtn");
   const gradeSel = document.getElementById("ttGradeSelect");
-gradeSel?.addEventListener("change", () => openModal(gradeSel.value, null, canEditNow));
+  gradeSel?.addEventListener("change", () =>
+    openModal(gradeSel.value, null, canEditNow),
+  );
 
   const closeModal = () => {
     modal.classList.add("is-hidden");
@@ -292,6 +284,7 @@ gradeSel?.addEventListener("change", () => openModal(gradeSel.value, null, canEd
   scrim?.addEventListener("click", closeModal);
 
   editBtn?.addEventListener("click", () => {
+    if (!currentTimetableData) return;
     isEditMode = true;
     editDays = currentTimetableData.days;
     editPeriods = currentTimetableData.periods;
@@ -368,7 +361,7 @@ gradeSel?.addEventListener("change", () => openModal(gradeSel.value, null, canEd
       saveBtn.textContent = "Saving...";
 
       const saved = await saveTimetableForGrade(
-        currentStudent.grade,
+        currentGrade,
         editDays,
         editPeriods,
         finalGrid,
@@ -376,7 +369,7 @@ gradeSel?.addEventListener("change", () => openModal(gradeSel.value, null, canEd
       currentTimetableData = { ...saved, existsInDb: true };
 
       noticeEl.className = "tt-status-notice success";
-      noticeEl.textContent = `Grade ${currentStudent.grade} timetable saved successfully!`;
+      noticeEl.textContent = `Grade ${currentGrade} timetable saved successfully!`;
       noticeEl.classList.remove("is-hidden");
 
       isEditMode = false;
@@ -385,7 +378,7 @@ gradeSel?.addEventListener("change", () => openModal(gradeSel.value, null, canEd
       cancelEditBtn.classList.add("is-hidden");
       saveBtn.classList.add("is-hidden");
 
-      const lineMap = currentLineMap;
+      const lineMap = currentLineMap();
       renderGridUI(
         currentTimetableData.days,
         currentTimetableData.periods,

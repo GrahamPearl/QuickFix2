@@ -32,7 +32,8 @@
         "edit": true,
         "addStudent": true,
         "bulkUpdate": true,
-        "manageUsers": true
+        "manageUsers": true,
+        "editTimetable": true
       },
       "links": [
         { "label": "Teams", "href": "hhs-teams/teams.html" },
