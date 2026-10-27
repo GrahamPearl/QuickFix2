@@ -1,103 +1,113 @@
 /**
  * js/timetable.js
- * Streamlined Timetable Module (Delegates security checks to Firestore Rules)
+ * Two kinds of timetable, one modal:
+ *  - "line"  (grades 10-12): one doc per grade; cells are subject LINE numbers
+ *            (-1 = free), resolved per student through enrollments.
+ *  - "class" (grades 8-9, APP_CONFIG.CLASS_TIMETABLE_GRADES): one doc per
+ *            registration class; cells are free text, e.g. "Maths | Mr Smith".
+ * Security is enforced by Firestore Rules, not by this file.
  */
-
 import { db, doc, getDoc, setDoc, auth } from "./firebase-init.js";
 import { escapeHtml } from "./html.js";
-let currentGrade = null;
-let canEditNow = false;
-let openSeq = 0;
 
+const $ = (id) => document.getElementById(id);
 const DEFAULT_DAYS = 5;
 const DEFAULT_PERIODS = 6;
+const MAX_LINE = 10; // keep in step with the line input in render.js
 
+const classGrades = () =>
+  (window.APP_CONFIG?.CLASS_TIMETABLE_GRADES || [8, 9]).map(Number);
+const isClassGrade = (g) => classGrades().includes(Number(g));
+const slug = (v) => String(v).toLowerCase().replace(/[^a-z0-9]+/g, "");
+const clsOf = (s) => String(s?.registrationClass || s?.class || "").trim();
+
+export function makeTarget(grade, className = "") {
+  grade = Number(grade);
+  if (isClassGrade(grade)) {
+    return {
+      grade,
+      className,
+      mode: "class",
+      docId: className ? `class_${grade}_${slug(className)}` : null,
+    };
+  }
+  return { grade, className: "", mode: "line", docId: `grade${grade}` };
+}
+const blankOf = (t) => (t.mode === "class" ? "" : -1);
+const labelOf = (t) =>
+  t.mode === "class" ? `Grade ${t.grade} class ${t.className || "—"}` : `Grade ${t.grade}`;
+
+/* ---------- state ---------- */
+let currentTarget = null;
 let currentStudent = null;
 let currentTimetableData = null;
 let isEditMode = false;
+let canEditNow = false;
 let editDays = DEFAULT_DAYS;
 let editPeriods = DEFAULT_PERIODS;
 let editGrid = [];
+let openSeq = 0;
+let getClasses = () => [];
 
-function createBlankGrid(days, periods) {
-  return Array.from({ length: days }, () => Array(periods).fill(-1));
-}
+/* ---------- grid helpers ---------- */
+const blankGrid = (d, p, b) => Array.from({ length: d }, () => Array(p).fill(b));
 
-function deserializeGrid(rawGrid, days, periods) {
-  if (!rawGrid || !Array.isArray(rawGrid))
-    return createBlankGrid(days, periods);
-  return rawGrid.map((row) => {
+function deserializeGrid(raw, days, periods, blank) {
+  if (!Array.isArray(raw)) return blankGrid(days, periods, blank);
+  return raw.map((row) => {
     if (Array.isArray(row)) return row;
     if (row && Array.isArray(row.periods)) return row.periods;
-    return Array(periods).fill(-1);
+    return Array(periods).fill(blank);
   });
 }
+const serializeGrid = (grid) =>
+  grid.map((row) => ({ periods: Array.isArray(row) ? row : [] }));
 
-function serializeGrid(grid2D) {
-  return grid2D.map((row) => ({
-    periods: Array.isArray(row) ? row : [],
-  }));
-}
+/* ---------- Firestore ---------- */
+export async function getTimetable(target) {
+  const blank = blankOf(target);
+  const empty = {
+    target, days: DEFAULT_DAYS, periods: DEFAULT_PERIODS,
+    grid: blankGrid(DEFAULT_DAYS, DEFAULT_PERIODS, blank),
+    updatedAt: null, updatedBy: null, existsInDb: false,
+  };
+  if (!target.docId) return empty;
 
-export async function getTimetableForGrade(grade) {
-  const docRef = doc(db, "timetables", `grade${grade}`);
-  const snap = await getDoc(docRef);
+  const snap = await getDoc(doc(db, "timetables", target.docId));
+  if (!snap.exists()) return empty;
 
-  if (snap.exists()) {
-    const data = snap.data();
-    const days = Number(data.days || DEFAULT_DAYS);
-    const periods = Number(data.periods || DEFAULT_PERIODS);
-    const grid = deserializeGrid(data.grid, days, periods);
-
-    return {
-      grade: Number(data.grade || grade),
-      days,
-      periods,
-      grid,
-      updatedAt: data.updatedAt || null,
-      updatedBy: data.updatedBy || null,
-      existsInDb: true,
-    };
-  }
-
+  const d = snap.data();
+  const days = Number(d.days || DEFAULT_DAYS);
+  const periods = Number(d.periods || DEFAULT_PERIODS);
   return {
-    grade: Number(grade),
-    days: DEFAULT_DAYS,
-    periods: DEFAULT_PERIODS,
-    grid: createBlankGrid(DEFAULT_DAYS, DEFAULT_PERIODS),
-    updatedAt: null,
-    updatedBy: null,
-    existsInDb: false,
+    target, days, periods,
+    grid: deserializeGrid(d.grid, days, periods, blank),
+    updatedAt: d.updatedAt || null,
+    updatedBy: d.updatedBy || null,
+    existsInDb: true,
   };
 }
 
-export async function saveTimetableForGrade(grade, days, periods, grid2D) {
-  const user = auth.currentUser;
-  const userEmail = user ? user.email : "staff@hhs.co.za";
-  const firestoreGrid = serializeGrid(grid2D);
-
+export async function saveTimetable(target, days, periods, grid) {
+  if (!target.docId) throw new Error("Choose a class first.");
   const payload = {
-    grade: Number(grade),
+    grade: target.grade,
+    mode: target.mode,
     days: Number(days),
     periods: Number(periods),
-    grid: firestoreGrid,
+    grid: serializeGrid(grid),
     updatedAt: new Date().toISOString(),
-    updatedBy: userEmail,
+    updatedBy: auth.currentUser?.email || "unknown",
   };
-
-  const docRef = doc(db, "timetables", `grade${grade}`);
-  await setDoc(docRef, payload, { merge: true });
-
+  if (target.mode === "class") payload.className = target.className;
+  await setDoc(doc(db, "timetables", target.docId), payload, { merge: true });
   return {
-    grade: Number(grade),
-    days: Number(days),
-    periods: Number(periods),
-    grid: grid2D,
-    updatedAt: payload.updatedAt,
-    updatedBy: payload.updatedBy,
+    target, days: payload.days, periods: payload.periods, grid,
+    updatedAt: payload.updatedAt, updatedBy: payload.updatedBy, existsInDb: true,
   };
 }
 
+/* ---------- student line lookup (line mode only) ---------- */
 export function buildLineToSubjectMap(student) {
   const map = {};
   const key = (n) => n.toLowerCase().replace(/[^a-z0-9]/g, "");
@@ -109,54 +119,69 @@ export function buildLineToSubjectMap(student) {
   });
   return map;
 }
-
 const currentLineMap = () =>
-  currentStudent ? buildLineToSubjectMap(currentStudent) : null;
+  currentTarget?.mode === "line" && currentStudent
+    ? buildLineToSubjectMap(currentStudent)
+    : null;
 
-function cellHtml(lineVal, lineMap) {
-  if (lineVal === -1) return `<span class="tt-badge-none">-</span>`;
-  if (!lineMap) return `<span class="tt-badge-subject">Line ${lineVal}</span>`;
-  const hit = lineMap[lineVal];
+/* ---------- rendering ---------- */
+function cellHtml(value, lineMap) {
+  if (currentTarget.mode === "class") {
+    const text = String(value ?? "").trim();
+    if (!text) return `<span class="tt-badge-none">-</span>`;
+    const [subject, teacher] = text.split("|").map((s) => s.trim());
+    return (
+      `<span class="tt-badge-subject">${escapeHtml(subject)}</span>` +
+      (teacher ? `<span class="tt-teacher">${escapeHtml(teacher)}</span>` : "")
+    );
+  }
+  const n = Number(value);
+  const line = Number.isFinite(n) ? n : -1;
+  if (line === -1) return `<span class="tt-badge-none">-</span>`;
+  if (!lineMap) return `<span class="tt-badge-subject">Line ${line}</span>`;
+  const hit = lineMap[line];
   if (!hit) return `<span class="tt-badge-not-enrolled">Not Enrolled</span>`;
   return (
     `<span class="tt-badge-subject">${escapeHtml(hit.subject)}</span>` +
-    (hit.teacher
-      ? `<span class="tt-teacher">${escapeHtml(hit.teacher)}</span>`
-      : "")
+    (hit.teacher ? `<span class="tt-teacher">${escapeHtml(hit.teacher)}</span>` : "")
   );
 }
 
-function renderGridUI(days, periods, grid, lineMap = null) {
-  const header = document.getElementById("ttGridHeader");
-  const body = document.getElementById("ttGridBody");
-
-  let headerHtml = "<tr><th>Day</th>";
-  for (let p = 0; p < periods; p++) headerHtml += `<th>Period ${p + 1}</th>`;
-  header.innerHTML = headerHtml + "</tr>";
-
-  let bodyHtml = "";
-  for (let d = 0; d < days; d++) {
-    bodyHtml += `<tr><td class="tt-day-label">Day ${d + 1}</td>`;
-    for (let p = 0; p < periods; p++) {
-      const raw = grid[d] && grid[d][p] !== undefined ? Number(grid[d][p]) : -1;
-      const lineVal = Number.isFinite(raw) ? raw : -1;
-      bodyHtml += isEditMode
-        ? `<td><input type="text" id="tt_cell_${d}_${p}" class="tt-cell-input" value="${lineVal}" autocomplete="off" /></td>`
-        : `<td>${cellHtml(lineVal, lineMap)}</td>`;
-    }
-    bodyHtml += "</tr>";
+function inputHtml(d, p, value) {
+  if (currentTarget.mode === "class") {
+    return `<input type="text" id="tt_cell_${d}_${p}" class="tt-cell-input tt-cell-text"
+      maxlength="40" value="${escapeHtml(String(value ?? ""))}" placeholder="Subject | Teacher" autocomplete="off" />`;
   }
-  body.innerHTML = bodyHtml;
+  const n = Number(value);
+  return `<input type="text" id="tt_cell_${d}_${p}" class="tt-cell-input"
+    value="${Number.isFinite(n) ? n : -1}" autocomplete="off" />`;
+}
+
+function renderGridUI(days, periods, grid, lineMap = null) {
+  let head = "<tr><th>Day</th>";
+  for (let p = 0; p < periods; p++) head += `<th>Period ${p + 1}</th>`;
+  $("ttGridHeader").innerHTML = head + "</tr>";
+
+  let body = "";
+  for (let d = 0; d < days; d++) {
+    body += `<tr><td class="tt-day-label">Day ${d + 1}</td>`;
+    for (let p = 0; p < periods; p++) {
+      const value = grid[d] && grid[d][p] !== undefined ? grid[d][p] : blankOf(currentTarget);
+      body += `<td>${isEditMode ? inputHtml(d, p, value) : cellHtml(value, lineMap)}</td>`;
+    }
+    body += "</tr>";
+  }
+  $("ttGridBody").innerHTML = body;
 }
 
 function readGridFromDOM(days, periods) {
+  const text = currentTarget.mode === "class";
   const grid = [];
   for (let d = 0; d < days; d++) {
     const row = [];
     for (let p = 0; p < periods; p++) {
-      const input = document.getElementById(`tt_cell_${d}_${p}`);
-      const val = input ? input.value.trim() : "";
-      row.push(val === "" ? -1 : Number(val));
+      const val = ($(`tt_cell_${d}_${p}`)?.value ?? "").trim();
+      row.push(text ? val : val === "" ? -1 : Number(val));
     }
     grid.push(row);
   }
@@ -164,27 +189,24 @@ function readGridFromDOM(days, periods) {
 }
 
 function validateInputs(days, periods) {
+  if (currentTarget.mode === "class") return { isValid: true, errorMsg: "" };
   let isValid = true;
   let errorMsg = "";
-
   for (let d = 0; d < days; d++) {
     for (let p = 0; p < periods; p++) {
-      const input = document.getElementById(`tt_cell_${d}_${p}`);
+      const input = $(`tt_cell_${d}_${p}`);
       if (!input) continue;
-
-      const val = input.value.trim();
       input.classList.remove("invalid-cell");
-
+      const val = input.value.trim();
       if (val === "") continue;
-
       const num = Number(val);
-      if (isNaN(val) || !Number.isInteger(num)) {
-        const MAX_LINE = 10; // matches max="10" on the edit-line input in render.js; adjust to your real number of lines
-        if (num !== -1 && (num < 1 || num > MAX_LINE)) {
-          input.classList.add("invalid-cell");
-          isValid = false;
-          if (!errorMsg)
-            errorMsg = `Line must be -1 (free) or 1–${MAX_LINE} at Day ${d + 1}, Period ${p + 1}.`;
+      const bad =
+        !Number.isInteger(num) || (num !== -1 && (num < 1 || num > MAX_LINE));
+      if (bad) {
+        input.classList.add("invalid-cell");
+        isValid = false;
+        if (!errorMsg) {
+          errorMsg = `Day ${d + 1}, Period ${p + 1}: use -1 (free) or a line from 1 to ${MAX_LINE}.`;
         }
       }
     }
@@ -192,51 +214,68 @@ function validateInputs(days, periods) {
   return { isValid, errorMsg };
 }
 
-/**
- * Open Timetable Modal
- * Visibility of #ttEditBtn is controlled by app.js before opening
- */
-async function openModal(grade, student, canEdit) {
+/* ---------- modal ---------- */
+async function openModal(target, student, canEdit) {
   const mine = ++openSeq;
-
+  currentTarget = target;
   currentStudent = student;
-  currentGrade = Number(grade);
+  currentTimetableData = null;
   canEditNow = canEdit;
   isEditMode = false;
-  const $ = (id) => document.getElementById(id);
+
+  const gradeMode = !student;
   const gradeSel = $("ttGradeSelect");
+  const classSel = $("ttClassSelect");
 
-  $("ttModalTitle").textContent = `Grade ${grade} Timetable`;
+  gradeSel?.classList.toggle("is-hidden", !gradeMode);
+  if (gradeSel && gradeMode) gradeSel.value = String(target.grade);
+
+  const showClass = gradeMode && target.mode === "class";
+  classSel?.classList.toggle("is-hidden", !showClass);
+  if (classSel && showClass) {
+    const classes = getClasses(target.grade);
+    classSel.innerHTML = classes.length
+      ? classes.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("")
+      : `<option value="">No classes found</option>`;
+    classSel.value = target.className;
+  }
+
+  $("ttModalTitle").textContent =
+    target.mode === "class"
+      ? `Grade ${target.grade} · Class ${target.className || "—"} Timetable`
+      : `Grade ${target.grade} Timetable`;
   $("ttModalSubtitle").textContent = student
-    ? `Student: ${student.fullName || student.adminNo} (${student.registrationClass || ""})`
-    : "All students · cells show subject line numbers (-1 = free period)";
-  gradeSel?.classList.toggle("is-hidden", Boolean(student));
-  if (gradeSel && !student) gradeSel.value = String(grade);
+    ? `Student: ${student.fullName || student.adminNo} (${clsOf(student)})`
+    : target.mode === "class"
+      ? "Class timetable · type the subject, or Subject | Teacher"
+      : "All students · cells show subject line numbers (-1 = free period)";
 
-  $("ttStatusNotice").classList.add("is-hidden");
+  const noticeEl = $("ttStatusNotice");
+  noticeEl.classList.add("is-hidden");
   $("ttStaffToolbar").classList.add("is-hidden");
   $("ttCancelEditBtn").classList.add("is-hidden");
   $("ttSaveBtn").classList.add("is-hidden");
-  $("ttEditBtn").classList.toggle("is-hidden", !canEdit);
+  $("ttEditBtn").classList.toggle("is-hidden", !canEdit || !target.docId);
   $("timetableModal").classList.remove("is-hidden");
 
-  const metaEl = $("ttMetaInfo"),
-    noticeEl = $("ttStatusNotice");
+  const metaEl = $("ttMetaInfo");
   try {
-    currentTimetableData = await getTimetableForGrade(grade);
-    if (mine !== openSeq) return;
-    renderGridUI(
-      currentTimetableData.days,
-      currentTimetableData.periods,
-      currentTimetableData.grid,
-      currentLineMap(),
-    );
-
-    metaEl.textContent =
-      currentTimetableData.existsInDb && currentTimetableData.updatedAt
-        ? `Grade ${grade} schedule · Last updated ${new Date(currentTimetableData.updatedAt).toLocaleDateString()}`
-        : `No timetable saved yet for Grade ${grade}.`;
+    const data = await getTimetable(target);
+    if (mine !== openSeq) return; // a newer open superseded this one
+    currentTimetableData = data;
+    renderGridUI(data.days, data.periods, data.grid, currentLineMap());
+    if (!target.docId) {
+      metaEl.textContent = student
+        ? "This student has no registration class on file."
+        : "Choose a class.";
+    } else {
+      metaEl.textContent =
+        data.existsInDb && data.updatedAt
+          ? `${labelOf(target)} · Last updated ${new Date(data.updatedAt).toLocaleDateString()}`
+          : `No timetable saved yet for ${labelOf(target)}.`;
+    }
   } catch (err) {
+    if (mine !== openSeq) return;
     console.error("Error opening timetable modal:", err);
     noticeEl.className = "tt-status-notice error";
     noticeEl.textContent = `Error loading timetable: ${err.message}`;
@@ -245,104 +284,105 @@ async function openModal(grade, student, canEdit) {
 }
 
 export const openStudentTimetableModal = (student, { canEdit = false } = {}) =>
-  openModal(student.grade, student, canEdit);
-export const openGradeTimetableModal = (grade, { canEdit = false } = {}) =>
-  openModal(grade, null, canEdit);
+  openModal(makeTarget(student.grade, clsOf(student)), student, canEdit);
 
-/**
- * Simplified Init Module
- */
-export function initTimetableModule() {
-  const modal = document.getElementById("timetableModal");
-  const scrim = document.getElementById("timetableModalScrim");
-  const closeBtn = document.getElementById("closeTimetableModalBtn");
-  const ttCloseBtn = document.getElementById("ttCloseBtn");
+export const openGradeTimetableModal = (grade, { canEdit = false } = {}) => {
+  const first = isClassGrade(grade) ? getClasses(grade)[0] || "" : "";
+  return openModal(makeTarget(grade, first), null, canEdit);
+};
 
-  const editBtn = document.getElementById("ttEditBtn");
-  const cancelEditBtn = document.getElementById("ttCancelEditBtn");
-  const saveBtn = document.getElementById("ttSaveBtn");
-  const staffToolbar = document.getElementById("ttStaffToolbar");
-  const noticeEl = document.getElementById("ttStatusNotice");
+/* ---------- wiring ---------- */
+export function initTimetableModule(opts = {}) {
+  if (typeof opts.getClasses === "function") getClasses = opts.getClasses;
 
-  const addDayBtn = document.getElementById("ttAddDayBtn");
-  const removeDayBtn = document.getElementById("ttRemoveDayBtn");
-  const addPeriodBtn = document.getElementById("ttAddPeriodBtn");
-  const removePeriodBtn = document.getElementById("ttRemovePeriodBtn");
-  const gradeSel = document.getElementById("ttGradeSelect");
-  gradeSel?.addEventListener("change", () =>
-    openModal(gradeSel.value, null, canEditNow),
-  );
+  const modal = $("timetableModal");
+  const editBtn = $("ttEditBtn");
+  const cancelEditBtn = $("ttCancelEditBtn");
+  const saveBtn = $("ttSaveBtn");
+  const staffToolbar = $("ttStaffToolbar");
+  const noticeEl = $("ttStatusNotice");
+  const gradeSel = $("ttGradeSelect");
+  const classSel = $("ttClassSelect");
 
   const closeModal = () => {
     modal.classList.add("is-hidden");
     noticeEl.classList.add("is-hidden");
     isEditMode = false;
   };
+  $("closeTimetableModalBtn")?.addEventListener("click", closeModal);
+  $("ttCloseBtn")?.addEventListener("click", closeModal);
+  $("timetableModalScrim")?.addEventListener("click", closeModal);
 
-  closeBtn?.addEventListener("click", closeModal);
-  ttCloseBtn?.addEventListener("click", closeModal);
-  scrim?.addEventListener("click", closeModal);
+  const okToLeave = () =>
+    !isEditMode || confirm("Discard your unsaved timetable changes?");
 
-  editBtn?.addEventListener("click", () => {
-    if (!currentTimetableData) return;
-    isEditMode = true;
-    editDays = currentTimetableData.days;
-    editPeriods = currentTimetableData.periods;
-    editGrid = JSON.parse(JSON.stringify(currentTimetableData.grid));
-
-    staffToolbar.classList.remove("is-hidden");
-    editBtn.classList.add("is-hidden");
-    cancelEditBtn.classList.remove("is-hidden");
-    saveBtn.classList.remove("is-hidden");
-
-    renderGridUI(editDays, editPeriods, editGrid);
+  gradeSel?.addEventListener("change", () => {
+    if (!okToLeave()) { gradeSel.value = String(currentTarget.grade); return; }
+    const g = gradeSel.value;
+    const first = isClassGrade(g) ? getClasses(g)[0] || "" : "";
+    openModal(makeTarget(g, first), null, canEditNow);
+  });
+  classSel?.addEventListener("change", () => {
+    if (!okToLeave()) { classSel.value = currentTarget.className; return; }
+    openModal(makeTarget(currentTarget.grade, classSel.value), null, canEditNow);
   });
 
-  cancelEditBtn?.addEventListener("click", () => {
+  const leaveEdit = () => {
     isEditMode = false;
     staffToolbar.classList.add("is-hidden");
     editBtn.classList.remove("is-hidden");
     cancelEditBtn.classList.add("is-hidden");
     saveBtn.classList.add("is-hidden");
-    noticeEl.classList.add("is-hidden");
-
-    const lineMap = currentLineMap();
+  };
+  const showView = () =>
     renderGridUI(
-      currentTimetableData.days,
-      currentTimetableData.periods,
-      currentTimetableData.grid,
-      lineMap,
+      currentTimetableData.days, currentTimetableData.periods,
+      currentTimetableData.grid, currentLineMap(),
     );
-  });
 
-  addDayBtn?.addEventListener("click", () => {
-    editGrid = readGridFromDOM(editDays, editPeriods);
-    editGrid.push(Array(editPeriods).fill(-1));
-    editDays++;
+  editBtn?.addEventListener("click", () => {
+    if (!currentTimetableData || !currentTarget?.docId) return;
+    isEditMode = true;
+    editDays = currentTimetableData.days;
+    editPeriods = currentTimetableData.periods;
+    editGrid = JSON.parse(JSON.stringify(currentTimetableData.grid));
+
+    const badge = $("ttEditBadge");
+    if (badge) {
+      badge.textContent =
+        currentTarget.mode === "class"
+          ? `Editing ${labelOf(currentTarget)} · Subject | Teacher`
+          : `Editing line numbers · ${labelOf(currentTarget)}`;
+    }
+    staffToolbar.classList.remove("is-hidden");
+    editBtn.classList.add("is-hidden");
+    cancelEditBtn.classList.remove("is-hidden");
+    saveBtn.classList.remove("is-hidden");
     renderGridUI(editDays, editPeriods, editGrid);
   });
 
-  removeDayBtn?.addEventListener("click", () => {
+  cancelEditBtn?.addEventListener("click", () => {
+    leaveEdit();
+    noticeEl.classList.add("is-hidden");
+    showView();
+  });
+
+  const resize = (fn) => {
+    editGrid = readGridFromDOM(editDays, editPeriods);
+    fn();
+    renderGridUI(editDays, editPeriods, editGrid);
+  };
+  $("ttAddDayBtn")?.addEventListener("click", () =>
+    resize(() => { editGrid.push(Array(editPeriods).fill(blankOf(currentTarget))); editDays++; }));
+  $("ttRemoveDayBtn")?.addEventListener("click", () => {
     if (editDays <= 1) return alert("Must have at least 1 day.");
-    editGrid = readGridFromDOM(editDays, editPeriods);
-    editGrid.pop();
-    editDays--;
-    renderGridUI(editDays, editPeriods, editGrid);
+    resize(() => { editGrid.pop(); editDays--; });
   });
-
-  addPeriodBtn?.addEventListener("click", () => {
-    editGrid = readGridFromDOM(editDays, editPeriods);
-    editGrid.forEach((row) => row.push(-1));
-    editPeriods++;
-    renderGridUI(editDays, editPeriods, editGrid);
-  });
-
-  removePeriodBtn?.addEventListener("click", () => {
+  $("ttAddPeriodBtn")?.addEventListener("click", () =>
+    resize(() => { editGrid.forEach((r) => r.push(blankOf(currentTarget))); editPeriods++; }));
+  $("ttRemovePeriodBtn")?.addEventListener("click", () => {
     if (editPeriods <= 1) return alert("Must have at least 1 period.");
-    editGrid = readGridFromDOM(editDays, editPeriods);
-    editGrid.forEach((row) => row.pop());
-    editPeriods--;
-    renderGridUI(editDays, editPeriods, editGrid);
+    resize(() => { editGrid.forEach((r) => r.pop()); editPeriods--; });
   });
 
   saveBtn?.addEventListener("click", async () => {
@@ -353,38 +393,16 @@ export function initTimetableModule() {
       noticeEl.classList.remove("is-hidden");
       return;
     }
-
     const finalGrid = readGridFromDOM(editDays, editPeriods);
-
     try {
       saveBtn.disabled = true;
       saveBtn.textContent = "Saving...";
-
-      const saved = await saveTimetableForGrade(
-        currentGrade,
-        editDays,
-        editPeriods,
-        finalGrid,
-      );
-      currentTimetableData = { ...saved, existsInDb: true };
-
+      currentTimetableData = await saveTimetable(currentTarget, editDays, editPeriods, finalGrid);
       noticeEl.className = "tt-status-notice success";
-      noticeEl.textContent = `Grade ${currentGrade} timetable saved successfully!`;
+      noticeEl.textContent = `${labelOf(currentTarget)} timetable saved.`;
       noticeEl.classList.remove("is-hidden");
-
-      isEditMode = false;
-      staffToolbar.classList.add("is-hidden");
-      editBtn.classList.remove("is-hidden");
-      cancelEditBtn.classList.add("is-hidden");
-      saveBtn.classList.add("is-hidden");
-
-      const lineMap = currentLineMap();
-      renderGridUI(
-        currentTimetableData.days,
-        currentTimetableData.periods,
-        currentTimetableData.grid,
-        lineMap,
-      );
+      leaveEdit();
+      showView();
     } catch (err) {
       console.error("Save error:", err);
       noticeEl.className = "tt-status-notice error";

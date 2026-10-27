@@ -1365,7 +1365,15 @@ if (signOutBtn) {
 
 function init() {
   wireEvents();
-  initTimetableModule();
+  initTimetableModule({
+    getClasses: (grade) =>
+      [...new Set(
+        roster
+          .filter((s) => String(s.grade) === String(grade))
+          .map((s) => String(s.registrationClass || s.class || "").trim())
+          .filter(Boolean),
+      )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+  });
   document.getElementById("openTimetableBtn")?.addEventListener("click", () => {
     if (!can(userTypes, userType, "editTimetable")) return;
     openGradeTimetableModal(8, { canEdit: true });

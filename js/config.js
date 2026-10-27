@@ -35,6 +35,7 @@ window.APP_CONFIG = {
 
   // Firestore collection holding one document per student, keyed by adminNo.
   STUDENTS_COLLECTION: "students",
+  CLASS_TIMETABLE_GRADES: [8, 9],
 
   // How long the in-browser student cache stays fresh before a
   // silent Firestore re-fetch (keeps read costs down; see js/students.js).

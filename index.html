@@ -238,19 +238,14 @@
         <div>
           <h2 class="modal-title" id="ttModalTitle">Grade -- Timetable</h2>
           <p class="modal-subtitle" id="ttModalSubtitle">Student: --</p>
-          <select id="ttGradeSelect" class="is-hidden">
-            <option value="8">Grade 8</option>
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
-            <option value="11">Grade 11</option>
-            <option value="12">Grade 12</option>
-          </select>
+          <select id="ttClassSelect" class="is-hidden"></select>
         </div>
         <button type="button" class="drawer-close" id="closeTimetableModalBtn" aria-label="Close">&times;</button>
       </div>
 
       <div class="modal-body">
         <!-- Staff Controls Toolbar (Only visible in Staff Edit Mode) -->
+        <span id="ttEditBadge" class="tt-edit-badge">Editing</span>
         <div id="ttStaffToolbar" class="timetable-toolbar is-hidden">
           <span class="tt-edit-badge">Editing Line Numbers Mode</span>
           <div class="tt-grid-actions">

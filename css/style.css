@@ -762,3 +762,5 @@ body.is-locked #printCardsBtn { display: none !important; }
 .tt-status-notice.error { background: #f3dcdc; color: var(--maroon); }
 .tt-status-notice.success { background: #dcefe0; color: #2f6b3a; }
 .tt-meta-info { font-size: .8rem; color: var(--text-muted); align-self: center; }
+.tt-cell-text { width: 100%; min-width: 120px; text-align: left; padding: 6px 8px; }
+#ttClassSelect { width: auto; margin-top: 6px; margin-left: 6px; }
