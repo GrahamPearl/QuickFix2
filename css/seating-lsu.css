@@ -1,0 +1,31 @@
+/* seating-lsu.css — extras on top of seating-class.css */
+.form-grid .span-all { grid-column: 1 / -1; }
+.sep { flex: 1; }
+.inline-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.inline-row select { flex: 1; min-width: 220px; width: auto; }
+input[type="text"]#venueIn, input[type="text"]#sessionIn { width: 100%; }
+
+textarea#bulkIn {
+  width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px;
+  font-size: .92rem; font-family: inherit; background: #fff; color: var(--text); resize: vertical;
+}
+textarea#bulkIn:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+
+.cand-photo { width: 36px; height: 46px; border-radius: 6px; object-fit: cover; object-position: top; border: 1px solid var(--line); background: var(--paper); display: block; }
+span.cand-photo { display: flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-weight: 600; font-size: .8rem; color: var(--ink-soft); }
+.cand-remove { border: none; background: none; color: var(--maroon); font-size: 1.1rem; cursor: pointer; line-height: 1; }
+.cand-remove:hover { color: var(--ink); }
+.cand-wrap tbody td { padding: 6px 12px; }
+.plan-msg ul { margin: 4px 0 0 18px; padding: 0; font-weight: 400; }
+
+/* unusable desks: shown on screen AND on the exported / printed plan */
+.seat.blocked {
+  background: repeating-linear-gradient(45deg, #ececec, #ececec 6px, #cfcfcf 6px, #cfcfcf 12px);
+  border: 2px dotted #777; color: #555; justify-content: center; cursor: default;
+  font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-align: center;
+}
+.seat.blocked:hover { background: repeating-linear-gradient(45deg, #ececec, #ececec 6px, #cfcfcf 6px, #cfcfcf 12px); border-color: #777; }
+.seat-grid.block-mode .seat { cursor: crosshair; outline: 1px dashed var(--gold); outline-offset: -4px; }
+.seat-grid.block-mode .seat.blocked:hover { border-color: var(--ink); }
+.btn.is-on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.btn.is-on:hover { background: var(--ink-soft); }

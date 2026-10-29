@@ -8,6 +8,7 @@ import { loadUserTypes, resolveUserType, can } from "./usertypes.js";
 import { getAllStudents, collectSubjects } from "./data-service.js";
 import { subjectKey } from "./edit-form.js";
 import { escapeHtml as esc } from "./html.js";
+import { loadLibs } from "./lazy-libs.js";
 
 const $ = (i) => document.getElementById(i);
 const { IMAGE_BASE_URL, SEATING_COLLECTION = "seatingPlans" } = window.APP_CONFIG;
@@ -428,6 +429,7 @@ $("loadBtn").addEventListener("click", async () => {
 function hidePreview() { S.canvas = null; $("previewWrap").classList.add("is-hidden"); }
 
 async function renderCanvas() {
+  await loadLibs("html2canvas");
   const placed = S.seats.filter((s) => s.student).length;
   if (!placed) throw new Error("Seat some learners first.");
   const showNotes = $("showNotes").checked;

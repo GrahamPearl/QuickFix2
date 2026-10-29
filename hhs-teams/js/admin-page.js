@@ -45,3 +45,4 @@ bindStructure();
 bindReports();
 
 boot("teamsAdmin").then(reports.loadTemplate);
+(window.requestIdleCallback || setTimeout)(() => loadLibs("xlsx", "jszip").catch(() => {}));

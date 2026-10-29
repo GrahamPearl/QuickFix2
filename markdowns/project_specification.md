@@ -2,7 +2,7 @@
 
 ## 1. Project Overview & Context
 * **Institution:** Hillcrest High School (HHS)
-* **Project Name:** Student Lookup & Hall Pass System
+* **Project Name:** Student Lookup
 * **Primary Goal:** Provide a fast, secure, web-based platform for staff to manage student hall passes, look up student profiles by a 5-digit admin number, enforce venue capacity limits, track active out-of-class duration, and maintain an immutable historical movement ledger.
 
 ---

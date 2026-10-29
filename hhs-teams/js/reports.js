@@ -3,6 +3,11 @@ import { CONFIG } from "./config.js";
 import * as fs from "./firestore.js";
 import { state } from "./store.js";
 import { download, esc, setSync, splitKey, toast } from "./utils.js";
+import { loadLibs } from "../../js/lazy-libs.js";
+
+// Word output needs JSZip; PDF output additionally needs mammoth + jsPDF (+ html2canvas, pulled in by jspdf)
+const loadReportLibs = (format) =>
+  format === "docx" ? loadLibs("jszip") : loadLibs("jszip", "mammoth", "jspdf");
 
 let TEMPLATE_B64 = null;
 let watermark = null;
@@ -45,6 +50,7 @@ export async function getAllRows() {
 }
 
 export async function exportActivitiesExcel() {
+  try { await loadLibs("xlsx"); } catch (e) { return toast(e.message, "danger"); }
   const rows = (await getAllRows()).sort((a, b) => a.adminNo.localeCompare(b.adminNo) || a.activity.localeCompare(b.activity));
   if (!rows.length) return toast("No assignments found.", "warn");
   const out = rows.map(r => ({ "Admin No": r.adminNo, "First Name": r.first, "Last Name": r.last, Grade: r.grade, Class: r.cls, Activity: r.activity, "Age Group": r.age, Role: r.role }));
@@ -112,12 +118,16 @@ export async function printStudent(adminNo, format) {
   if (!TEMPLATE_B64) return toast("Upload a template first.", "warn");
   const rows = (await getAllRows()).filter(r => r.adminNo === adminNo);
   if (!rows.length) return toast(`No activities found for ${adminNo}.`, "warn");
-  try { const n = await build(rows, format, download); toast(`Generated report for ${n}.`); }
-  catch (e) { toast("Report failed: " + e.message, "danger"); }
+  try {
+    await loadReportLibs(format);
+    const n = await build(rows, format, download);
+    toast(`Generated report for ${n}.`);
+  } catch (e) { toast("Report failed: " + e.message, "danger"); }
 }
 
 export async function printAll(grade, format) {
   if (!TEMPLATE_B64) return toast("Upload a template first.", "warn");
+  try { await loadReportLibs(format); } catch (e) { return toast(e.message, "danger"); }
   const byAdmin = {};
   (await getAllRows()).filter(r => grade === "ALL" || r.grade === grade).forEach(r => (byAdmin[r.adminNo] ||= []).push(r));
   const ids = Object.keys(byAdmin);

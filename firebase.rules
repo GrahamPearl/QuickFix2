@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function userDoc(id) {
+      return /databases/$(database)/documents/authorized_users/$(id);
+    }
+
+    // Returns the signed-in user's type, looked up by UID then by email; null if not listed.
+    function myType() {
+      return request.auth == null ? null :
+        (exists(userDoc(request.auth.uid))
+          ? get(userDoc(request.auth.uid)).data.type
+          : (request.auth.token.email != null &&
+             exists(userDoc(request.auth.token.email.lower()))
+              ? get(userDoc(request.auth.token.email.lower())).data.type
+              : null));
+    }
+
+    function canRead()  { return myType() != null && myType() in ['admin', 'staffhead', 'slt', 'staff']; }
+    function isAdminOrHead() { return myType() in ['admin', 'staffhead']; }
+
+    match /authorized_users/{id} {
+      // Allow any authenticated user to read authorized_users
+      allow read: if request.auth != null;
+      // Allow administrators and head staff to add/edit authorized users
+      allow write: if isAdminOrHead();
+    }
+
+    match /students/{adminNo} {
+      allow read:  if canRead();
+      allow write: if isAdminOrHead();
+    }
+
+    match /teams/{id} {
+      allow read:  if canRead();
+      allow write: if false;
+    }
+
+    match /timetables/{id} {
+      // Allows staff, SLT, staff heads, and admins to view timetable data
+      allow read:  if canRead();
+      // Allows admins and staff heads to create/update/delete timetables
+      allow write: if isAdminOrHead();
+    }
+
+    function t() { return get(/databases/$(database)/documents/authorized_users/$(request.auth.token.email.lower())).data.type; }
+function staff() { return request.auth != null && t() in ['admin','staff-head','staff-gc','staff-office','staff']; }
+function reviewer() { return request.auth != null && t() in ['admin','staff-head','staff-gc']; }
+
+match /active-hall-passes/{email} {
+  allow read: if staff();
+  allow write: if staff() && (request.auth.token.email.lower() == email || reviewer());
+}
+match /history-hall-pass/{id} {
+  allow create: if staff();
+  allow read: if reviewer();
+  allow update, delete: if false;   // immutable ledger
+}
+
+  }
+}

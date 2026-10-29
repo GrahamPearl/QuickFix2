@@ -13,14 +13,21 @@
         "addStudent": true,
         "bulkUpdate": true,
         "manageUsers": true,
-        "editTimetable": true
+        "editTimetable": true,
+        "bulkAllocate": true,
+        "hallPass": true, 
+        "hallPassReview": true,
+        "bulkImport": true
       },
       "links": [
         { "label": "Teams", "href": "hhs-teams/teams.html" },
         { "label": "Awards", "href": "awards.html" },
         { "label": "Manage users", "href": "admin_users.html" },
-        { "label": "Seating plans", "href": "seating-class.html" },
-        { "label": "Seating plans", "href": "seating-teacher.html" }
+        { "label": "08-09 Seating plans", "href": "seating-class.html" },
+        { "label": "10-11 Seating plans ", "href": "seating-teacher.html" },
+        { "label": "LSU Seating plans", "href": "seating-lsu.html" },
+        { "label": "Allocate subjects", "href": "allocate.html" },
+        { "label": "Import students", "href": "admin_import.html" }
       ]
     },
     "staff-head": {
@@ -33,7 +40,9 @@
         "addStudent": true,
         "bulkUpdate": true,
         "manageUsers": true,
-        "editTimetable": true
+        "editTimetable": true,
+        "hallPass": true, 
+        "hallPassReview": true
       },
       "links": [
         { "label": "Teams", "href": "hhs-teams/teams.html" },
@@ -53,7 +62,9 @@
         "edit": true,
         "addStudent": true,
         "bulkUpdate": false,
-        "manageUsers": false
+        "manageUsers": false,
+        "hallPass": true, 
+        "hallPassReview": true
       },
       "links": [
         { "label": "Teams", "href": "hhs-teams/teams.html" },
@@ -85,7 +96,8 @@
         "edit": false,
         "addStudent": false,
         "bulkUpdate": false,
-        "manageUsers": false
+        "manageUsers": false,
+        "hallPass": true
       },
       "links": [{ "label": "Teams", "href": "hhs-teams/teams.html" }]
     },

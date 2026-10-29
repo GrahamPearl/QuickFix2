@@ -120,3 +120,11 @@ export function clearRosterCache() {
   memoryCache = null;
   try { sessionStorage.removeItem(CACHE_KEY); } catch { /* ignore */ }
 }
+
+export function patchCachedStudents(records) {
+  if (!memoryCache || !records.length) return null;
+  const byId = new Map(records.map((r) => [String(r.adminNo), r]));
+  memoryCache = memoryCache.map((s) => byId.get(String(s.adminNo)) || s);
+  writeSessionCache(memoryCache);
+  return memoryCache;
+}

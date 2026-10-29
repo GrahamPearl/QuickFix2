@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Allocate Subjects</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/allocate.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Allocate Subjects</h1>
+        <p class="site-subtitle">BULK ENROLMENT BY CLASS · ADMIN ONLY</p>
+      </div>
+      <div class="header-spacer"></div>
+      <span id="userBadge" class="admin-badge is-hidden"></span>
+      <a href="index.html" class="staff-link">&larr; Back to roster</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner" aria-hidden="true"></span><span>Checking your access…</span></div>
+
+    <div id="app" class="is-hidden">
+
+      <section class="panel">
+        <h2 class="panel-title">1. Grade &amp; classes</h2>
+        <div class="form-grid">
+          <div><label for="gradeSel">Grade</label><select id="gradeSel"></select></div>
+          <div class="span-all">
+            <div class="panel-row">
+              <label>Registration classes</label>
+              <div class="btn-row">
+                <button type="button" id="classAllBtn" class="btn btn-ghost">All</button>
+                <button type="button" id="classNoneBtn" class="btn btn-ghost">None</button>
+              </div>
+            </div>
+            <div id="classBox" class="teacher-box"><span class="empty-hint">Choose a grade first.</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-row">
+          <h2 class="panel-title">2. Students <span id="selCount" class="empty-hint">0 selected</span></h2>
+          <div class="btn-row">
+            <button type="button" id="selAllBtn" class="btn btn-ghost">Select all shown</button>
+            <button type="button" id="selNoneBtn" class="btn btn-ghost">Clear selection</button>
+          </div>
+        </div>
+        <input type="text" id="studentSearch" placeholder="Filter by name or admin number…" autocomplete="off" />
+        <div id="studentGrid"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">3. Subject &amp; teacher</h2>
+        <div class="form-grid">
+          <div>
+            <label for="subjectSel">Subject</label>
+            <select id="subjectSel"></select>
+            <input type="text" id="subjectOther" class="is-hidden" placeholder="New subject name" autocomplete="off" />
+          </div>
+          <div>
+            <label for="teacherSel">Teacher</label>
+            <select id="teacherSel"></select>
+            <input type="text" id="teacherOther" class="is-hidden" placeholder="Teacher name" autocomplete="off" />
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">4. Line</h2>
+        <div id="lineBox"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">5. Review &amp; allocate</h2>
+        <p class="empty-hint">Review re-reads the latest student records and lists any conflicts before anything is saved.</p>
+        <div class="btn-row"><button type="button" id="reviewBtn" class="btn btn-primary">Review allocation</button></div>
+        <p id="reviewMsg" class="plan-msg"></p>
+        <div id="reviewBox"></div>
+        <div id="resultBox"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script type="module" src="js/allocate-app.js"></script>
+</body>
+</html>

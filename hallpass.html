@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Hall Passes</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/hallpass.css" />
+</head>
+<body>
+  <div id="loginGate" class="login-gate is-hidden">
+    <div class="login-card">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <h2 class="login-title">Hall passes: staff sign in</h2>
+      <p class="login-hint">Sign in with your school account to sign learners out and back in.</p>
+      <form id="authForm" novalidate>
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" required autocomplete="username" />
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" required autocomplete="current-password" />
+        <p id="authError" class="error-text"></p>
+        <button type="submit" id="authSubmit" class="btn btn-primary btn-block">Sign in</button>
+      </form>
+      <p id="authStatus" class="login-status"></p>
+    </div>
+  </div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Hall Passes</h1>
+        <p class="site-subtitle">LEARNERS OUT OF CLASS</p>
+      </div>
+      <div class="header-spacer"></div>
+      <span id="userBadge" class="admin-badge is-hidden"></span>
+      <button id="signOutBtn" type="button" class="staff-link is-hidden">Sign out</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner" aria-hidden="true"></span><span>Checking your access…</span></div>
+
+    <div id="app" class="is-hidden">
+
+      <section class="panel">
+        <h2 class="panel-title">Sign a learner out <span id="slotInfo" class="empty-hint"></span></h2>
+        <form id="outForm" novalidate>
+          <div class="hp-form">
+            <div><label for="adminNo">Admin number</label>
+              <input type="text" id="adminNo" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="e.g. 10425" /></div>
+            <div><label for="reason">Reason</label><select id="reason"></select></div>
+            <div><label for="note">Note (optional)</label>
+              <input type="text" id="note" maxlength="120" autocomplete="off" /></div>
+            <button type="submit" id="outBtn" class="btn btn-primary">Sign out</button>
+          </div>
+          <div id="preview" class="empty-hint"></div>
+          <p id="formMsg" class="plan-msg"></p>
+        </form>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">My learners out</h2>
+        <div id="mine"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-row">
+          <h2 class="panel-title">All learners out now <span id="allCount" class="empty-hint"></span></h2>
+        </div>
+        <div id="all"></div>
+      </section>
+
+      <section class="panel is-hidden" id="reviewPanel">
+        <h2 class="panel-title">History review</h2>
+        <div class="hp-form hp-review-bar">
+          <div><label for="vGrade">Grade</label>
+            <select id="vGrade"><option value="">All grades</option>
+              <option>8</option><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
+          <div><label for="vView">View</label>
+            <select id="vView"><option value="week">Week summary</option><option value="trend">4-week trend</option></select></div>
+          <div><label for="vTeacher">Teacher</label>
+            <select id="vTeacher"><option value="">All teachers</option></select></div>
+          <div><label for="vDate">Week containing</label><input type="date" id="vDate" /></div>
+          <div class="btn-row">
+            <button type="button" id="vPrev" class="btn btn-ghost">&larr; Week</button>
+            <button type="button" id="vNext" class="btn btn-ghost">Week &rarr;</button>
+            <button type="button" id="vLoad" class="btn btn-primary">Show</button>
+          </div>
+        </div>
+        <p id="vMsg" class="plan-msg"></p>
+        <div id="reviewOut"></div>
+      </section>
+    </div>
+  </main>
+
+  <div id="logModal" class="modal-wrapper is-hidden" aria-label="Learner passes">
+    <div class="modal-backdrop" id="logScrim"></div>
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <div id="logHead" class="hp-log-head"></div>
+        <button type="button" class="drawer-close" id="logClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-body" id="logBody"></div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script type="module" src="js/hallpass-app.js"></script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import { auth, onAuthStateChanged } from "./firebase-init.js";
 import { loadUserTypes, resolveUserType, can } from "./usertypes.js";
 import { getAllStudents } from "./data-service.js";
 import { escapeHtml as esc } from "./html.js";
+import { loadLibs } from "./lazy-libs.js";
 
 const $ = (id) => document.getElementById(id);
 const { IMAGE_BASE_URL } = window.APP_CONFIG;

@@ -40,4 +40,6 @@ window.APP_CONFIG = {
   // How long the in-browser student cache stays fresh before a
   // silent Firestore re-fetch (keeps read costs down; see js/students.js).
   CACHE_TTL_MS: 30 * 60 * 1000,
+  ALLOCATION_BATCHES_COLLECTION: "allocation-batches",
+  
 };

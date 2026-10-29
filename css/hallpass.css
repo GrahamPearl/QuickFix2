@@ -1,0 +1,57 @@
+/* hallpass.css — page styles for hallpass.html; palette from style.css */
+.header-spacer { flex: 1; }
+.staff-link { background: none; border: none; color: var(--gold-soft); font: inherit; font-size: .82rem; cursor: pointer; text-decoration: underline; padding: 4px 6px; }
+.staff-link:hover { color: #fff; }
+.admin-badge { font-size: .8rem; color: var(--gold-soft); background: rgba(255,255,255,.08); padding: 6px 10px; border-radius: 999px; }
+.admin-badge.is-hidden { display: none; }
+
+.panel { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 20px 22px; margin-bottom: 20px; }
+.panel-title { font-family: var(--font-serif); font-size: 1.1rem; color: var(--ink); margin: 0 0 12px; border-bottom: 2px solid var(--gold); padding-bottom: 6px; }
+.panel-row { display: flex; justify-content: space-between; gap: 12px; }
+.panel-row .panel-title { flex: 1; }
+.pool-title { font-family: var(--font-serif); font-size: .95rem; margin: 18px 0 6px; color: var(--ink); }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.hp-form { display: grid; grid-template-columns: 1fr 1fr 2fr auto; gap: 14px; align-items: end; }
+.hp-review-bar { grid-template-columns: 1fr 1fr 1.3fr 1.2fr auto; margin-bottom: 8px; }
+input[type="date"] { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: .92rem; background: #fff; }
+.plan-msg { margin: 10px 0 0; font-size: .88rem; }
+.plan-msg:empty { display: none; }
+.ok { color: #2f6b3a; font-weight: 600; } .warn { color: #b36b00; font-weight: 600; } .err { color: var(--maroon); font-weight: 600; }
+
+/* tables: override style.css overflow:hidden so wide tables scroll */
+.hp-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+.hp-scroll table { min-width: 560px; }
+.hp-scroll td, .hp-scroll th { padding: 8px 10px; white-space: nowrap; }
+td.num { text-align: center; font-variant-numeric: tabular-nums; }
+td.hp-zero { color: var(--line-strong); }
+td.hp-hot { background: #f3dcdc; color: var(--maroon); font-weight: 700; }
+tr.hp-total td { font-weight: 700; background: var(--paper); }
+tr.hp-overdue td { background: #f3dcdc; }
+tr.hp-overdue .hp-mins { color: var(--maroon); font-weight: 700; }
+
+@media (max-width: 760px) { .hp-form, .hp-review-bar { grid-template-columns: 1fr; } }
+
+/* sign-in gate (login-card styles come from style.css) */
+input[type="email"], input[type="password"] { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: .92rem; background: #fff; color: var(--text); }
+input[type="email"]:focus, input[type="password"]:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.login-card .error-text:empty { display: none; }
+.login-card .btn-block { margin-top: 14px; }
+
+/* photos */
+.hp-photo { flex: none; width: 32px; height: 40px; border-radius: 6px; object-fit: cover; object-position: top; background: var(--paper); border: 1px solid var(--line); }
+.hp-photo-lg { width: 88px; height: 112px; border-radius: 8px; }
+.hp-initials { display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-serif); font-weight: 600; color: var(--ink-soft); font-size: .8rem; }
+.hp-photo-lg.hp-initials { font-size: 1.6rem; }
+td.hp-who > * { vertical-align: middle; }
+td.hp-who .hp-photo { display: inline-flex; margin-right: 10px; }
+.hp-preview { display: flex; gap: 14px; align-items: center; margin-top: 12px; padding: 10px 12px; background: var(--paper); border: 1px dashed var(--line-strong); border-radius: 8px; color: var(--text); font-size: .95rem; line-height: 1.5; }
+
+/* clickable learner rows + pass log modal */
+tr.hp-click { cursor: pointer; }
+tr.hp-click:hover td { background: var(--gold-soft); }
+td.hp-warn { color: var(--maroon); font-weight: 600; }
+.hp-log-head { display: flex; gap: 14px; align-items: center; padding-right: 30px; }
+.hp-log-head .modal-title { margin: 0; }
+#logBody { max-height: 60vh; overflow-y: auto; }

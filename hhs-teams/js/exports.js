@@ -2,6 +2,7 @@
 import { state, commit, persistMeta, selectTeam, metaFromTeams } from "./store.js";
 import { download, splitKey, toast } from "./utils.js";
 import { setSelection } from "./filters.js";
+import { loadLibs } from "../../js/lazy-libs.js";
 import { CONFIG } from "./config.js";
 
 const safeName = s => s.replace(/[^a-z0-9_-]/gi, "_");
@@ -44,3 +45,8 @@ export async function importJSON(file) {
     toast(`Imported ${data.members.length} members into ${activity} · ${age}.`);
   } catch (e) { toast("Import failed: " + e.message, "danger"); }
 }
+
+export async function exportExcel() {
+  if (!state.key || !state.roster.length) return toast("Select a team with members first.", "warn");
+  try { await loadLibs("xlsx"); } catch (e) { return toast(e.message, "danger"); }
+  // ...rest unchanged
