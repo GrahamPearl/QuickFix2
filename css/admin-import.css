@@ -14,3 +14,5 @@ tr.bad td { background: #f3dcdc; } tr.warnrow td { background: #fff7e0; }
 .plan-msg { margin-top: 10px; font-size: .88rem; } .plan-msg.ok { color: #2f6b3a; font-weight: 600; } .plan-msg.err { color: var(--maroon); font-weight: 600; }
 .warn-box { background: #fff7e0; border: 1px solid var(--gold); border-radius: 8px; padding: 8px 12px; font-size: .84rem; margin-bottom: 8px; }
 progress { width: 100%; margin-top: 10px; }
+.tag-move { background: #e3ecfb; color: #1d3f8a; }
+.tag-leave { background: #f3dcdc; color: var(--maroon); }

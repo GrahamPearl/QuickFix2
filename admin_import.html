@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -8,13 +9,19 @@
   <link rel="stylesheet" href="css/admin-users.css" />
   <link rel="stylesheet" href="css/admin-import.css" />
 </head>
+
 <body>
-  <header class="site-header"><div class="header-inner">
-    <div class="crest" aria-hidden="true">HHS</div>
-    <div><h1 class="site-title">Bulk Student Import</h1><p class="site-subtitle">EXCEL → FIREBASE · ADMIN ONLY</p></div>
-    <div class="header-spacer"></div>
-    <a href="index.html" class="staff-link">&larr; Back to roster</a>
-  </div></header>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Bulk Student Import</h1>
+        <p class="site-subtitle">EXCEL → FIREBASE · ADMIN ONLY</p>
+      </div>
+      <div class="header-spacer"></div>
+      <a href="index.html" class="staff-link">&larr; Back to roster</a>
+    </div>
+  </header>
 
   <main class="page">
     <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
@@ -22,7 +29,8 @@
 
       <section class="panel">
         <h2 class="panel-title">1. Load spreadsheet</h2>
-        <p class="empty-hint">Class-list workbook (.xlsx, one worksheet per registration class), or a previous backup (.json) to restore from.</p>
+        <p class="empty-hint">Class-list workbook (.xlsx, one worksheet per registration class), or a previous backup
+          (.json) to restore from.</p>
         <div class="imp-row">
           <input type="file" id="fileIn" accept=".xlsx,.xls,.json" />
           <label class="imp-inline">Age-group year <input type="number" id="ageYear" min="2000" max="2100" /></label>
@@ -38,43 +46,92 @@
           <input type="text" id="rowFilter" placeholder="Filter by name or admin no…" />
           <label class="imp-inline"><input type="checkbox" id="errOnly" /> Problems only</label>
         </div>
-        <div class="table-wrap imp-scroll"><table>
-          <thead><tr><th>Sheet</th><th>Admin No</th><th>First</th><th>Last</th><th>Gr</th><th>Class</th><th>Gender</th><th>Birthdate</th><th>Age group</th><th>Status</th></tr></thead>
-          <tbody id="revBody"></tbody></table></div>
-        <label class="chk"><input type="checkbox" id="reviewed" /> I have reviewed all worksheets. Rows with problems will be skipped.</label>
+        <div class="table-wrap imp-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Sheet</th>
+                <th>Admin No</th>
+                <th>First</th>
+                <th>Last</th>
+                <th>Gr</th>
+                <th>Class</th>
+                <th>Gender</th>
+                <th>Birthdate</th>
+                <th>Age group</th>
+                <th>Status</th>
+                <th>Confirm</th>
+              </tr>
+            </thead>
+            <tbody id="revBody"></tbody>
+          </table>
+        </div>
+        <label class="chk"><input type="checkbox" id="reviewed" /> I have reviewed all worksheets. Rows with problems
+          are skipped; flagged rows (e.g. 6-digit admin numbers) are skipped unless confirmed.</label>
       </section>
 
       <section class="panel is-hidden" id="modePanel">
         <h2 class="panel-title">3. Import mode &amp; comparison</h2>
         <div class="imp-modes">
-          <label><input type="radio" name="mode" value="replace" /> <strong>Replace (all overwrite)</strong><br><span class="empty-hint">Every spreadsheet value overwrites Firestore. Subjects, teams and awards are kept unless you tick “wipe” below.</span></label>
-          <label><input type="radio" name="mode" value="merge" checked /> <strong>Merge (add missing)</strong><br><span class="empty-hint">Adds new students and fills empty fields. Existing values are never changed. Applied automatically.</span></label>
-          <label><input type="radio" name="mode" value="confirm" /> <strong>Merge (add missing, confirmed)</strong><br><span class="empty-hint">Same as Merge, but you tick each addition before it is written.</span></label>
+          <label><input type="radio" name="mode" value="replace" /> <strong>Replace (all overwrite)</strong><br><span
+              class="empty-hint">Every spreadsheet value overwrites Firestore. Subjects, teams and awards are kept
+              unless you tick “wipe” below.</span></label>
+          <label><input type="radio" name="mode" value="merge" checked /> <strong>Merge (add missing)</strong><br><span
+              class="empty-hint">Adds new students and fills empty fields. Existing values are never changed. Applied
+              automatically.</span></label>
+          <label><input type="radio" name="mode" value="confirm" /> <strong>Merge (add missing,
+              confirmed)</strong><br><span class="empty-hint">Same as Merge, but you tick each addition before it is
+              written.</span></label>
         </div>
         <div id="replaceOpts" class="is-hidden">
-          <label class="chk"><input type="checkbox" id="wipe" /> Wipe everything else on overwritten students (subjects, enrollments, teams, awards)</label>
-          <label class="chk"><input type="checkbox" id="delExtra" /> Delete students that are not in the spreadsheet (leavers)</label>
+          <label class="chk"><input type="checkbox" id="wipe" /> Wipe everything else on overwritten students (subjects,
+            enrollments, teams, awards)</label>
         </div>
+        <label class="chk"><input type="checkbox" id="limitGrades" checked /> Only flag leavers in grades that appear in
+          the file (untick if a whole grade has left)</label>
         <button type="button" id="compareBtn" class="btn btn-primary">Compare with Firestore</button>
         <p id="cmpMsg" class="empty-hint"></p>
       </section>
 
       <section class="panel is-hidden" id="planPanel">
         <h2 class="panel-title">4. Staged changes <span id="planCount" class="empty-hint"></span></h2>
-        <div class="table-wrap imp-scroll"><table>
-          <thead><tr><th style="width:36px"><input type="checkbox" id="tickAll" /></th><th>Action</th><th>Admin No</th><th>Name</th><th>Details</th></tr></thead>
-          <tbody id="planBody"></tbody></table></div>
+
+        <div class="imp-row">
+          <button type="button" id="tickMoves" class="btn btn-ghost">Tick all class moves</button>
+          <button type="button" id="untickMoves" class="btn btn-ghost">Untick moves</button>
+          <button type="button" id="tickLeavers" class="btn btn-ghost">Tick all leavers</button>
+          <button type="button" id="untickLeavers" class="btn btn-ghost">Untick leavers</button>
+        </div>
+
+        <div class="table-wrap imp-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:36px"><input type="checkbox" id="tickAll" /></th>
+                <th>Action</th>
+                <th>Admin No</th>
+                <th>Name</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="planBody"></tbody>
+          </table>
+        </div>
       </section>
 
       <section class="panel is-hidden" id="goPanel">
         <h2 class="panel-title">5. Backup &amp; import</h2>
-        <p class="empty-hint">A full backup of the current <span class="mono" id="colName"></span> collection must be downloaded before importing.</p>
+        <p class="empty-hint">A full backup of the current <span class="mono" id="colName"></span> collection must be
+          downloaded before importing.</p>
         <div class="imp-row">
           <button type="button" id="backupBtn" class="btn">⬇ Download backup (JSON)</button>
           <span id="backupMsg" class="empty-hint">Not downloaded yet.</span>
         </div>
-        <label class="chk"><input type="checkbox" id="savedOk" disabled /> I have saved the backup file somewhere safe.</label>
-        <div id="typeRow" class="is-hidden"><label for="typeConfirm">Type REPLACE to confirm</label><input type="text" id="typeConfirm" autocomplete="off" /></div>
+        <label class="chk"><input type="checkbox" id="savedOk" disabled /> I have saved the backup file somewhere
+          safe.</label>
+        <div id="delRow" class="is-hidden"><label for="delConfirm" id="delLabel">Type DELETE to confirm</label><input type="text" id="delConfirm" autocomplete="off" /></div>  
+        <div id="typeRow" class="is-hidden"><label for="typeConfirm">Type REPLACE to confirm</label><input type="text"
+            id="typeConfirm" autocomplete="off" /></div>
         <button type="button" id="importBtn" class="btn btn-primary" disabled>Import to Firebase</button>
         <progress id="prog" class="is-hidden" value="0" max="1"></progress>
         <p id="importMsg" class="plan-msg"></p>
@@ -86,4 +143,5 @@
   <script src="js/config.js"></script>
   <script type="module" src="js/admin_import.js"></script>
 </body>
+
 </html>

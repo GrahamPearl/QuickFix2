@@ -1,7 +1,9 @@
 /**
  * admin_import.js — page controller for admin_import.html.
  * Excel class lists (one sheet per registration class) -> students collection.
- * Flow: parse + review -> compare with Firestore -> mandatory backup -> batched write.
+ * Flow: parse + review (flagged rows need confirmation) -> compare with Firestore
+ *       (new / fill / overwrite / CLASS MOVES / LEAVERS) -> mandatory backup -> batched write.
+ * Moves and leavers are never applied unless ticked. Deleting needs the word DELETE typed.
  * Needs permission "bulkImport" in usertypes.json. Real enforcement = Firestore Rules.
  */
 import {
@@ -18,10 +20,16 @@ const BATCH = 400;
 // Fields the spreadsheet owns. Everything else (subjects, teams, awards...) is left alone on existing docs.
 const OWNED = ["id", "adminNo", "firstName", "lastName", "fullName", "grade", "class", "registrationClass",
   "gender", "birthdate", "agegroup", "photo", "searchTokens"];
+// Changing these on an existing student is a "move" and always needs a tick.
+const MOVE = ["registrationClass", "class", "grade"];
+const OTHER = OWNED.filter((f) => !MOVE.includes(f));
 const norm = (v) => String(v ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
 const HEAD = { admno: "adminNo", surname: "lastName", preferredname: "firstName", g: "gender", bdate: "birthdate", agegroup: "agegroup" };
 
-const S = { user: null, file: "", rows: [], sheets: [], existing: new Map(), plan: [], orphans: [], backedUp: false, source: "xlsx" };
+const S = {
+  user: null, file: "", rows: [], sheets: [], existing: new Map(), plan: [],
+  backedUp: false, source: "xlsx", note: "",
+};
 
 /* ---------- access ---------- */
 function deny(msg) {
@@ -60,8 +68,9 @@ function buildRecord(sheet, r) {
   const birthdate = fmtDate(r.birthdate);
   const grade = Number((sheet.match(/grade\s*(\d+)/i) || [])[1]) || null;
   const cls = (sheet.match(/\b(\d+[A-Z]+)\b/) || [])[1] || "";
-  const errors = [];
-  if (!/^\d{5}$/.test(adminNo)) errors.push("Admin no must be 5 digits");
+  const errors = [], warnings = [];
+  if (/^\d{6}$/.test(adminNo)) warnings.push("6-digit admin no (temporary / foreign student?). Confirm it is correct");
+  else if (!/^\d{5}$/.test(adminNo)) errors.push("Admin no must be 5 digits (6 for temporary students)");
   if (!firstName) errors.push("Missing preferred name");
   if (!lastName) errors.push("Missing surname");
   if (!/^[MF]/.test(g)) errors.push("Gender must be M or F");
@@ -69,7 +78,7 @@ function buildRecord(sheet, r) {
   if (!grade || !cls) errors.push("Cannot read grade/class from sheet name");
   const low = (x) => x.toLowerCase();
   return {
-    errors,
+    errors, warnings,
     rec: {
       id: adminNo, adminNo, firstName, lastName, fullName: `${firstName} ${lastName}`.trim(), grade, class: cls,
       registrationClass: sheet, gender: g.startsWith("M") ? "Male" : "Female", birthdate,
@@ -80,6 +89,9 @@ function buildRecord(sheet, r) {
 }
 // Fields only given to brand-new students (match the sample_students.json layout).
 const newDefaults = () => ({ subjectsSummary: [], enrollments: {}, teams: [], academic: { candidateNo: null, examNo: null }, flags: { concession: false } });
+
+// A row is imported when it has no errors and, if flagged, has been confirmed.
+const usable = (r) => !r.errors.length && (!r.warnings.length || r.confirmed);
 
 function parseWorkbook(wb) {
   const rows = [], sheets = [], seen = new Map();
@@ -98,9 +110,9 @@ function parseWorkbook(wb) {
       if (r.every((c) => c === null || c === "")) return;
       const raw = {}; Object.entries(cols).forEach(([f, i]) => (raw[f] = r[i]));
       if (raw.adminNo === null || raw.adminNo === "") return;
-      const { rec, errors } = buildRecord(sh.name, raw);
+      const { rec, errors, warnings } = buildRecord(sh.name, raw);
       if (seen.has(rec.id)) errors.push(`Duplicate of ${seen.get(rec.id)}`); else seen.set(rec.id, sh.name);
-      rows.push({ sheet: sh.name, rowNo: hi + k + 2, rec, errors });
+      rows.push({ sheet: sh.name, rowNo: hi + k + 2, rec, errors, warnings, confirmed: false });
       sh.count++;
     });
     if (sh.declared !== null && sh.declared !== sh.count) sh.issues.push(`Sheet says ${sh.declared} students, ${sh.count} rows read`);
@@ -117,7 +129,9 @@ $("fileIn").addEventListener("change", async (e) => {
       S.source = "json";
       const obj = JSON.parse(await f.text());
       const list = Array.isArray(obj) ? obj : Object.values(obj);
-      S.rows = list.filter((s) => s && s.adminNo).map((s) => ({ sheet: s.registrationClass || "backup", rowNo: 0, rec: { ...s, id: String(s.adminNo) }, errors: [] }));
+      S.rows = list.filter((s) => s && s.adminNo).map((s) => ({
+        sheet: s.registrationClass || "backup", rowNo: 0, rec: { ...s, id: String(s.adminNo) }, errors: [], warnings: [], confirmed: false,
+      }));
       S.sheets = [...new Set(S.rows.map((r) => r.sheet))].map((n) => ({ name: n, count: S.rows.filter((r) => r.sheet === n).length, issues: [] }));
     } else {
       S.source = "xlsx";
@@ -129,26 +143,65 @@ $("fileIn").addEventListener("change", async (e) => {
 $("ageYear").addEventListener("change", () => { if (S.source === "xlsx" && $("fileIn").files[0]) $("fileIn").dispatchEvent(new Event("change")); });
 
 /* ---------- review table ---------- */
+const flagged = () => S.rows.filter((r) => !r.errors.length && r.warnings.length);
+
+function renderWarnings() {
+  const warns = S.sheets.filter((s) => s.issues.length);
+  const fl = flagged(), ok = fl.filter((r) => r.confirmed).length;
+  $("sheetWarn").innerHTML =
+    warns.map((s) => `<div class="warn-box"><strong>${esc(s.name)}:</strong> ${esc(s.issues.join("; "))}</div>`).join("") +
+    (fl.length
+      ? `<div class="warn-box"><strong>${fl.length} flagged row(s)</strong> (e.g. 6-digit admin numbers) are skipped unless confirmed: ${ok} confirmed.
+         <button type="button" id="okAllWarn" class="btn btn-ghost">Confirm all flagged rows</button></div>`
+      : "");
+}
+
 function showReview() {
-  const bad = S.rows.filter((r) => r.errors.length).length;
-  $("loadMsg").textContent = `${S.file}: ${S.sheets.length} worksheets, ${S.rows.length} students, ${bad} with problems.`;
+  const bad = S.rows.filter((r) => r.errors.length).length, fl = flagged().length;
+  $("loadMsg").textContent = `${S.file}: ${S.sheets.length} worksheets, ${S.rows.length} students, ${bad} with problems, ${fl} flagged for confirmation.`;
   $("sheetSel").innerHTML = `<option value="">All worksheets (${S.rows.length})</option>` +
     S.sheets.map((s) => `<option value="${esc(s.name)}">${esc(s.name)} (${s.count})${s.issues.length ? " ⚠" : ""}</option>`).join("");
-  const warns = S.sheets.filter((s) => s.issues.length);
-  $("sheetWarn").innerHTML = warns.map((s) => `<div class="warn-box"><strong>${esc(s.name)}:</strong> ${esc(s.issues.join("; "))}</div>`).join("");
+  renderWarnings();
   $("revCount").textContent = `(${S.rows.length} rows)`;
   $("reviewPanel").classList.remove("is-hidden");
   renderReview();
 }
+
 function renderReview() {
   const sh = $("sheetSel").value, q = $("rowFilter").value.trim().toLowerCase(), eo = $("errOnly").checked;
-  $("revBody").innerHTML = S.rows.filter((r) =>
-    (!sh || r.sheet === sh) && (!eo || r.errors.length) && (!q || `${r.rec.fullName} ${r.rec.adminNo}`.toLowerCase().includes(q)))
-    .map(({ sheet, rec: s, errors }) => `<tr class="${errors.length ? "bad" : ""}"><td>${esc(sheet)}</td><td class="mono">${esc(s.adminNo)}</td>
-      <td>${esc(s.firstName)}</td><td>${esc(s.lastName)}</td><td>${esc(s.grade)}</td><td>${esc(s.class)}</td><td>${esc(s.gender)}</td>
-      <td>${esc(s.birthdate)}</td><td>${esc(s.agegroup)}</td><td>${errors.length ? esc(errors.join("; ")) : "OK"}</td></tr>`).join("");
+  $("revBody").innerHTML = S.rows
+    .map((r, i) => ({ r, i }))
+    .filter(({ r }) => (!sh || r.sheet === sh) && (!eo || r.errors.length || r.warnings.length) &&
+      (!q || `${r.rec.fullName} ${r.rec.adminNo}`.toLowerCase().includes(q)))
+    .map(({ r, i }) => {
+      const s = r.rec, hasErr = r.errors.length > 0, hasWarn = r.warnings.length > 0;
+      const status = hasErr ? r.errors.join("; ") : hasWarn ? r.warnings.join("; ") : "OK";
+      const confirm = !hasErr && hasWarn
+        ? `<input type="checkbox" class="warn-ok" data-i="${i}" ${r.confirmed ? "checked" : ""} title="Tick to confirm these details are correct" />` : "";
+      return `<tr class="${hasErr ? "bad" : hasWarn ? "warnrow" : ""}"><td>${esc(r.sheet)}</td><td class="mono">${esc(s.adminNo)}</td>
+        <td>${esc(s.firstName)}</td><td>${esc(s.lastName)}</td><td>${esc(s.grade)}</td><td>${esc(s.class)}</td><td>${esc(s.gender)}</td>
+        <td>${esc(s.birthdate)}</td><td>${esc(s.agegroup)}</td><td>${esc(status)}</td><td>${confirm}</td></tr>`;
+    }).join("");
 }
 ["sheetSel", "rowFilter", "errOnly"].forEach((i) => $(i).addEventListener("input", renderReview));
+
+// Confirming or un-confirming a flagged row changes what will be compared, so restart from step 3.
+function onConfirmChange() {
+  resetFrom("mode");
+  $("modePanel").classList.toggle("is-hidden", !$("reviewed").checked);
+  renderWarnings();
+}
+$("revBody").addEventListener("change", (e) => {
+  const cb = e.target.closest(".warn-ok");
+  if (!cb) return;
+  S.rows[Number(cb.dataset.i)].confirmed = cb.checked;
+  onConfirmChange();
+});
+$("sheetWarn").addEventListener("click", (e) => {
+  if (e.target.id !== "okAllWarn") return;
+  flagged().forEach((r) => (r.confirmed = true));
+  renderReview(); onConfirmChange();
+});
 $("reviewed").addEventListener("change", () => { resetFrom("mode"); $("modePanel").classList.toggle("is-hidden", !$("reviewed").checked); });
 
 function resetFrom(step) {
@@ -158,16 +211,19 @@ function resetFrom(step) {
   if (step === "review") $("reviewed").checked = false;
   $("planPanel").classList.add("is-hidden"); $("goPanel").classList.add("is-hidden");
   $("backupMsg").textContent = "Not downloaded yet."; $("savedOk").checked = false; $("savedOk").disabled = true;
+  $("delConfirm").value = ""; $("typeConfirm").value = "";
   $("importMsg").textContent = ""; updateImportBtn();
 }
 
 /* ---------- compare ---------- */
 const mode = () => document.querySelector('input[name="mode"]:checked').value;
+const hidePlan = () => { $("planPanel").classList.add("is-hidden"); $("goPanel").classList.add("is-hidden"); };
 document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener("change", () => {
   $("replaceOpts").classList.toggle("is-hidden", mode() !== "replace");
   $("typeRow").classList.toggle("is-hidden", mode() !== "replace");
-  $("planPanel").classList.add("is-hidden"); $("goPanel").classList.add("is-hidden");
+  hidePlan();
 }));
+$("limitGrades").addEventListener("change", hidePlan);
 const blank = (v) => v === undefined || v === null || v === "";
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
@@ -177,7 +233,7 @@ $("compareBtn").addEventListener("click", async () => {
     const snap = await getDocs(collection(db, COL));
     S.existing = new Map(snap.docs.map((d) => [d.id, d.data()]));
     buildPlan();
-    $("cmpMsg").textContent = `Firestore currently holds ${S.existing.size} students.`;
+    $("cmpMsg").textContent = `Firestore currently holds ${S.existing.size} students. ${S.note}`;
     $("planPanel").classList.remove("is-hidden"); $("goPanel").classList.remove("is-hidden");
     S.backedUp = false; $("savedOk").checked = false; $("savedOk").disabled = true; $("backupMsg").textContent = "Not downloaded yet.";
     updateImportBtn();
@@ -185,48 +241,118 @@ $("compareBtn").addEventListener("click", async () => {
   finally { $("compareBtn").disabled = false; }
 });
 
+// Class/grade code of the stored student vs the spreadsheet (compares the short code, e.g. "9B").
+const codeOf = (d) => norm(d.class || d.registrationClass);
+function hasMoved(old, rec) {
+  const oc = codeOf(old);
+  const classMoved = oc && oc !== norm(rec.class);
+  const gradeMoved = !blank(old.grade) && Number(old.grade) !== Number(rec.grade);
+  return Boolean(classMoved || gradeMoved);
+}
+const classLabel = (d) => `${d.registrationClass || d.class || "no class"} (Gr ${blank(d.grade) ? "?" : d.grade})`;
+
 function buildPlan() {
-  const m = mode(), good = S.rows.filter((r) => !r.errors.length), ids = new Set(good.map((r) => r.rec.id));
-  S.plan = good.map(({ rec }) => {
+  const m = mode(), isJson = S.source === "json";
+  const good = S.rows.filter(usable);
+  // Every id in the file counts as "still here", even rows with problems or unconfirmed flags.
+  const inFile = new Set(S.rows.map((r) => r.rec.id));
+  const plan = [];
+
+  good.forEach(({ rec }) => {
     const old = S.existing.get(rec.id);
-    if (!old) return { id: rec.id, rec, kind: "new", data: { ...rec, ...(S.source === "json" ? {} : newDefaults()) }, details: "New student", on: true };
-    const diffs = OWNED.filter((f) => !same(old[f], rec[f]) && rec[f] !== undefined);
-    if (m === "replace") {
-      return { id: rec.id, rec, kind: diffs.length ? "over" : "same", data: pick(rec, OWNED), details: diffs.map((f) => `${f}: ${show(old[f])} → ${show(rec[f])}`).join("; "), on: diffs.length > 0 };
+    if (!old) {
+      plan.push({ id: rec.id, rec, kind: "new", data: { ...rec, ...(isJson ? {} : newDefaults()) }, details: "New student", on: true });
+      return;
     }
-    const fillF = diffs.filter((f) => blank(old[f]));
-    const data = pick(rec, fillF);
-    Object.entries(newDefaults()).forEach(([k, v]) => { if (S.source !== "json" && old[k] === undefined) { data[k] = v; fillF.push(k); } });
-    const conflicts = diffs.filter((f) => !blank(old[f])).map((f) => `${f}: ${show(old[f])} ≠ ${show(rec[f])}`);
-    return { id: rec.id, rec, kind: fillF.length ? "fill" : "same", data,
-      details: [fillF.length ? `Fills: ${fillF.join(", ")}` : "", conflicts.length ? `Not changed (differs): ${conflicts.join("; ")}` : ""].filter(Boolean).join(" · "), on: fillF.length > 0 };
+    const moved = hasMoved(old, rec);
+    const fields = moved ? OTHER : OWNED; // a move is handled by its own row, never auto-applied
+    const diffs = fields.filter((f) => !same(old[f], rec[f]) && rec[f] !== undefined);
+    let main;
+    if (m === "replace") {
+      main = { id: rec.id, rec, kind: diffs.length ? "over" : "same", data: pick(rec, fields),
+        details: diffs.map((f) => `${f}: ${show(old[f])} → ${show(rec[f])}`).join("; "), on: diffs.length > 0 };
+    } else {
+      const fillF = diffs.filter((f) => blank(old[f]));
+      const data = pick(rec, fillF);
+      Object.entries(newDefaults()).forEach(([k, v]) => { if (!isJson && old[k] === undefined) { data[k] = v; fillF.push(k); } });
+      const conflicts = diffs.filter((f) => !blank(old[f])).map((f) => `${f}: ${show(old[f])} ≠ ${show(rec[f])}`);
+      main = { id: rec.id, rec, kind: fillF.length ? "fill" : "same", data,
+        details: [fillF.length ? `Fills: ${fillF.join(", ")}` : "", conflicts.length ? `Not changed (differs): ${conflicts.join("; ")}` : ""].filter(Boolean).join(" · "),
+        on: fillF.length > 0 };
+    }
+    if (main.kind !== "same" || !moved) plan.push(main);
+    if (moved) {
+      plan.push({ id: rec.id, rec, kind: "move", data: pick(rec, MOVE), on: false,
+        details: `${classLabel(old)} → ${classLabel(rec)}` });
+    }
   });
-  S.orphans = [...S.existing.keys()].filter((id) => !ids.has(id));
+
+  // Leavers: in Firestore, not in the file.
+  const skippedSheets = S.sheets.filter((s) => s.issues.some((i) => /skipped/i.test(i)));
+  const gradesInFile = new Set(S.rows.map((r) => Number(r.rec.grade)).filter(Boolean));
+  const limit = $("limitGrades").checked;
+  S.note = "";
+  if (skippedSheets.length) {
+    S.note = `Leaver detection is OFF: ${skippedSheets.length} worksheet(s) were skipped, so their students would look like leavers.`;
+  } else {
+    const leavers = [...S.existing].filter(([id, d]) => !inFile.has(id) && (!limit || gradesInFile.has(Number(d.grade))));
+    leavers.forEach(([id, d]) => plan.push({
+      id, kind: "leave", data: null, on: false,
+      rec: { fullName: d.fullName || `${d.firstName || ""} ${d.lastName || ""}`.trim() || id },
+      details: `${classLabel(d)} · not in the spreadsheet`,
+    }));
+    if (S.existing.size && leavers.length / S.existing.size > 0.1) {
+      S.note = `Warning: ${leavers.length} of ${S.existing.size} students look like leavers. Check you loaded the complete file.`;
+    }
+  }
+
+  const ord = { new: 0, fill: 1, over: 2, move: 3, leave: 4, same: 5 };
+  plan.sort((a, b) => ord[a.kind] - ord[b.kind] || String(a.rec.fullName).localeCompare(String(b.rec.fullName)));
+  S.plan = plan;
   renderPlan();
 }
 const pick = (o, ks) => Object.fromEntries(ks.map((k) => [k, o[k]]));
 const show = (v) => (blank(v) ? "(empty)" : Array.isArray(v) ? v.join(",") : String(v));
 
+// New / fill / overwrite follow the import mode; moves and leavers can always be ticked individually.
+const alwaysManual = (p) => p.kind === "move" || p.kind === "leave";
+const locked = (p) => !alwaysManual(p) && mode() !== "confirm";
+const TAGS = { new: "Add", fill: "Fill", over: "Overwrite", move: "Class move", leave: "Leaver · delete" };
+const ROWCLS = { over: "warnrow", move: "warnrow", leave: "bad" };
+
 function renderPlan() {
   const c = (k) => S.plan.filter((p) => p.kind === k).length;
-  $("planCount").textContent = `(${c("new")} new · ${c("fill") + c("over")} to update · ${c("same")} unchanged · ${S.orphans.length} in Firestore but not in file)`;
-  const manual = mode() === "confirm";
-  $("tickAll").disabled = !manual;
-  $("planBody").innerHTML = S.plan.filter((p) => p.kind !== "same").map((p) => `<tr data-id="${esc(p.id)}" class="${p.kind === "over" ? "warnrow" : ""}">
-    <td><input type="checkbox" class="plan-on" ${p.on ? "checked" : ""} ${manual ? "" : "disabled"} /></td>
-    <td><span class="tag tag-${p.kind}">${{ new: "Add", fill: "Fill", over: "Overwrite" }[p.kind]}</span></td>
+  $("planCount").textContent = `(${c("new")} new · ${c("move")} class moves · ${c("leave")} leavers · ${c("fill") + c("over")} to update · ${c("same")} unchanged)`;
+  $("tickAll").disabled = mode() !== "confirm";
+  $("planBody").innerHTML = S.plan.filter((p) => p.kind !== "same").map((p) => `<tr data-id="${esc(p.id)}" data-kind="${p.kind}" class="${ROWCLS[p.kind] || ""}">
+    <td><input type="checkbox" class="plan-on" ${p.on ? "checked" : ""} ${locked(p) ? "disabled" : ""} /></td>
+    <td><span class="tag tag-${p.kind}">${TAGS[p.kind]}</span></td>
     <td class="mono">${esc(p.id)}</td><td>${esc(p.rec.fullName)}</td><td class="student-sub">${esc(p.details)}</td></tr>`).join("") ||
-    `<tr><td colspan="5" class="empty-hint">Nothing to change — Firestore already matches the file.</td></tr>`;
+    `<tr><td colspan="5" class="empty-hint">Nothing to change. Firestore already matches the file.</td></tr>`;
+  updateImportBtn();
+}
+
+function setTicks(test, on) {
+  S.plan.forEach((p) => { if (test(p) && !locked(p)) p.on = on; });
+  document.querySelectorAll("#planBody tr").forEach((tr) => {
+    const p = S.plan.find((x) => x.id === tr.dataset.id && x.kind === tr.dataset.kind);
+    const cb = tr.querySelector(".plan-on");
+    if (p && cb && !cb.disabled) cb.checked = p.on;
+  });
   updateImportBtn();
 }
 $("planBody").addEventListener("change", (e) => {
   const tr = e.target.closest("tr"); if (!tr) return;
-  S.plan.find((p) => p.id === tr.dataset.id).on = e.target.checked; updateImportBtn();
+  S.plan.find((p) => p.id === tr.dataset.id && p.kind === tr.dataset.kind).on = e.target.checked; updateImportBtn();
 });
-$("tickAll").addEventListener("change", (e) => {
-  S.plan.forEach((p) => { if (p.kind !== "same") p.on = e.target.checked; });
-  document.querySelectorAll(".plan-on").forEach((c) => (c.checked = e.target.checked)); updateImportBtn();
+$("tickAll").addEventListener("change", (e) => setTicks((p) => p.kind !== "same" && p.kind !== "leave", e.target.checked));
+$("tickMoves").addEventListener("click", () => setTicks((p) => p.kind === "move", true));
+$("untickMoves").addEventListener("click", () => setTicks((p) => p.kind === "move", false));
+$("tickLeavers").addEventListener("click", () => {
+  const n = S.plan.filter((p) => p.kind === "leave").length;
+  if (n && confirm(`Tick all ${n} leaver(s) for DELETION? Check the list first.`)) setTicks((p) => p.kind === "leave", true);
 });
+$("untickLeavers").addEventListener("click", () => setTicks((p) => p.kind === "leave", false));
 
 /* ---------- backup ---------- */
 $("backupBtn").addEventListener("click", () => {
@@ -241,23 +367,30 @@ $("backupBtn").addEventListener("click", () => {
   $("backupMsg").textContent = `Downloaded ${a.download} (${S.existing.size} students).`;
   updateImportBtn();
 });
-["savedOk", "typeConfirm", "wipe", "delExtra"].forEach((i) => $(i).addEventListener("input", updateImportBtn));
+["savedOk", "typeConfirm", "wipe", "delConfirm"].forEach((i) => $(i).addEventListener("input", updateImportBtn));
 function updateImportBtn() {
-  const todo = S.plan.some((p) => p.on) || (mode() === "replace" && $("delExtra").checked && S.orphans.length);
-  const typed = mode() !== "replace" || $("typeConfirm").value.trim() === "REPLACE";
-  $("importBtn").disabled = !(S.backedUp && $("savedOk").checked && todo && typed);
+  const todo = S.plan.some((p) => p.on);
+  const dels = S.plan.filter((p) => p.kind === "leave" && p.on).length;
+  $("delRow").classList.toggle("is-hidden", !dels);
+  $("delLabel").textContent = `Type DELETE to permanently remove ${dels} student(s)`;
+  const typedReplace = mode() !== "replace" || $("typeConfirm").value.trim() === "REPLACE";
+  const typedDelete = !dels || $("delConfirm").value.trim() === "DELETE";
+  $("importBtn").disabled = !(S.backedUp && $("savedOk").checked && todo && typedReplace && typedDelete);
 }
 
 /* ---------- import ---------- */
 $("importBtn").addEventListener("click", async () => {
-  const m = mode(), wipe = m === "replace" && $("wipe").checked, del = m === "replace" && $("delExtra").checked;
-  const ops = S.plan.filter((p) => p.on).map((p) => ({
-    id: p.id, data: p.data, merge: !(p.kind === "new" || wipe),
-  }));
-  if (wipe) ops.forEach((o) => { if (S.existing.has(o.id)) o.data = { ...S.plan.find((p) => p.id === o.id).rec, ...newDefaults() }; });
-  const dels = del ? S.orphans : [];
+  const m = mode(), wipe = m === "replace" && $("wipe").checked;
+  const ticked = S.plan.filter((p) => p.on);
+  const dels = ticked.filter((p) => p.kind === "leave").map((p) => p.id);
+  const moves = ticked.filter((p) => p.kind === "move");
+  const ops = ticked.filter((p) => p.kind !== "leave").map((p) => {
+    // "wipe" only applies to overwritten students, never to moved ones
+    if (wipe && p.kind === "over" && S.existing.has(p.id)) return { id: p.id, data: { ...p.rec, ...newDefaults() }, merge: false };
+    return { id: p.id, data: p.data, merge: p.kind !== "new" };
+  });
   const total = ops.length + dels.length;
-  if (!confirm(`Write ${ops.length} student(s)${dels.length ? ` and DELETE ${dels.length}` : ""} in "${COL}"?`)) return;
+  if (!confirm(`Write ${ops.length} student(s) (${moves.length} class move(s))${dels.length ? ` and DELETE ${dels.length}` : ""} in "${COL}"?`)) return;
 
   $("importBtn").disabled = true; $("prog").classList.remove("is-hidden"); $("prog").max = total; $("prog").value = 0;
   let done = 0;
@@ -274,12 +407,12 @@ $("importBtn").addEventListener("click", async () => {
     }
     clearRosterCache();
     try {
-      await addDoc(collection(db, LOG_COL), { mode: m, wipe, deleted: dels.length, written: ops.length, source: S.file,
-        backupFile: S.backupName || "", by: S.user.email, at: serverTimestamp() });
+      await addDoc(collection(db, LOG_COL), { mode: m, wipe, deleted: dels.length, deletedIds: dels, moved: moves.length, movedIds: moves.map((p) => p.id),
+        written: ops.length, source: S.file, backupFile: S.backupName || "", by: S.user.email, at: serverTimestamp() });
     } catch (e) { console.warn("Import log not written", e.code); }
-    say(`Import complete: ${ops.length} written, ${dels.length} deleted. Reload the roster to see the changes.`, "ok");
+    say(`Import complete: ${ops.length} written (${moves.length} class moves), ${dels.length} deleted. Reload the roster to see the changes.`, "ok");
   } catch (err) {
-    say(`Stopped after ${done} of ${total} writes: ${err.message}. Earlier batches are already saved — restore from the backup if needed.`, "err");
+    say(`Stopped after ${done} of ${total} writes: ${err.message}. Earlier batches are already saved. Restore from the backup if needed.`, "err");
   }
 });
 function say(t, c) { $("importMsg").className = `plan-msg ${c}`; $("importMsg").textContent = t; }
