@@ -17,8 +17,8 @@ service cloud.firestore {
               : null));
     }
 
-    function canRead()  { return myType() != null && myType() in ['admin', 'staffhead', 'slt', 'staff']; }
-    function isAdminOrHead() { return myType() in ['admin', 'staffhead']; }
+    function canRead()  { return myType() != null && myType() in ['admin', 'staff-head', 'slt', 'staff', 'staff-gc', 'staff-office']; }
+    function isAdminOrHead() { return myType() in ['admin', 'staff-head']; }
 
     match /authorized_users/{id} {
       // Allow any authenticated user to read authorized_users
@@ -58,5 +58,9 @@ match /history-hall-pass/{id} {
   allow update, delete: if false;   // immutable ledger
 }
 
+  match /notices/{id} {
+     allow read: if myType() != null;
+     allow write: if myType() in ['admin', 'staff-head'];
+   }
   }
 }

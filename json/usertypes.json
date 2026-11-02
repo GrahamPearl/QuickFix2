@@ -1,118 +1,36 @@
 {
-  "version": 1,
+  "version": 2,
   "collection": "authorized_users",
   "types": {
     "admin": {
-      "label": "Admin",
-      "level": 0,
-      "description": "Full access: edit students, bulk update, manage teams, manage users.",
-      "permissions": {
-        "view": true,
-        "viewTeams": true,
-        "edit": true,
-        "addStudent": true,
-        "bulkUpdate": true,
-        "manageUsers": true,
-        "editTimetable": true,
-        "bulkAllocate": true,
-        "hallPass": true, 
-        "hallPassReview": true,
-        "bulkImport": true
-      },
-      "links": [
-        { "label": "Teams", "href": "hhs-teams/teams.html" },
-        { "label": "Awards", "href": "awards.html" },
-        { "label": "Manage users", "href": "admin_users.html" },
-        { "label": "08-09 Seating plans", "href": "seating-class.html" },
-        { "label": "10-11 Seating plans ", "href": "seating-teacher.html" },
-        { "label": "LSU Seating plans", "href": "seating-lsu.html" },
-        { "label": "Allocate subjects", "href": "allocate.html" },
-        { "label": "Import students", "href": "admin_import.html" }
-      ]
+      "label": "Admin", "level": 0,
+      "description": "Full access: edit students, bulk tools, teams, notices and user access.",
+      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "bulkAllocate": true, "bulkImport": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true }
     },
     "staff-head": {
-      "label": "Head Staff",
-      "level": 0,
-      "description": "Full access: edit students, bulk update, manage teams, manage users.",
-      "permissions": {
-        "view": true,
-        "edit": true,
-        "addStudent": true,
-        "bulkUpdate": true,
-        "manageUsers": true,
-        "editTimetable": true,
-        "hallPass": true, 
-        "hallPassReview": true
-      },
-      "links": [
-        { "label": "Teams", "href": "hhs-teams/teams.html" },
-        { "label": "Awards", "href": "awards.html" },
-        { "label": "Manage users", "href": "admin_users.html" }
-      ]
+      "label": "Head Staff", "level": 0,
+      "description": "Edit students, manage teams and users, post notices.",
+      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true }
     },
     "staff-gc": {
-      "label": "Staff - Grade Controller",
-      "level": 0,
-      "description": "Full access: edit students, manage teams.",
-      "permissions": {
-        "view": true,
-        "viewTeams": true,
-        "editTeams": true,
-        "teamsAdmin": false,
-        "edit": true,
-        "addStudent": true,
-        "bulkUpdate": false,
-        "manageUsers": false,
-        "hallPass": true, 
-        "hallPassReview": true
-      },
-      "links": [
-        { "label": "Teams", "href": "hhs-teams/teams.html" },
-        { "label": "Awards", "href": "awards.html" }
-      ]
+      "label": "Staff - Grade Controller", "level": 0,
+      "description": "Edit students, edit teams, review hall passes.",
+      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": false, "edit": true, "addStudent": true, "bulkUpdate": false, "manageUsers": false, "hallPass": true, "hallPassReview": true, "viewAwards": true }
     },
     "staff-office": {
-      "label": "Staff - Office",
-      "level": 0,
-      "description": "Partial access: view students, view teams, view awards.",
-      "permissions": {
-        "view": true,
-        "edit": false,
-        "addStudent": false,
-        "bulkUpdate": false,
-        "manageUsers": false
-      },
-      "links": [
-        { "label": "Teams", "href": "hhs-teams/teams.html" },
-        { "label": "Awards", "href": "awards.html" }
-      ]
+      "label": "Staff - Office", "level": 0,
+      "description": "View students, teams and awards.",
+      "permissions": { "view": true, "viewTeams": true, "viewAwards": true }
     },
     "staff": {
-      "label": "Staff",
-      "level": 2,
-      "description": "Read-only access to the roster and Teams.",
-      "permissions": {
-        "view": true,
-        "edit": false,
-        "addStudent": false,
-        "bulkUpdate": false,
-        "manageUsers": false,
-        "hallPass": true
-      },
-      "links": [{ "label": "Teams", "href": "hhs-teams/teams.html" }]
+      "label": "Staff", "level": 2,
+      "description": "View students and teams; sign learners out on hall passes.",
+      "permissions": { "view": true, "viewTeams": true, "hallPass": true }
     },
     "slt": {
-      "label": "SLT",
-      "level": 1,
-      "description": "Senior leadership: read-only access to the roster, plus teams.",
-      "permissions": {
-        "view": true,
-        "edit": false,
-        "addStudent": false,
-        "bulkUpdate": false,
-        "manageUsers": false
-      },
-      "links": [{ "label": "Teams", "href": "hhs-teams/teams.html" }]
+      "label": "SLT", "level": 1,
+      "description": "Senior leadership: view students and teams.",
+      "permissions": { "view": true, "viewTeams": true }
     }
   }
 }

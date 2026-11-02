@@ -1,34 +1,26 @@
 <!doctype html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Hillcrest High School — Student Lookup</title>
+  <title>Hillcrest High School — Dashboard</title>
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
 </head>
-
 <body>
-
-  <div id="loginGate" class="login-gate">
+  <div id="loginGate" class="login-gate is-hidden">
     <div class="login-card">
       <div class="crest" aria-hidden="true">HHS</div>
       <h2 class="login-title">Staff sign in</h2>
-      <p class="login-hint">Sign in with your school account to view the student roster.</p>
-
-      <form id="authForm">
+      <p class="login-hint">Sign in with your school account.</p>
+      <form id="authForm" novalidate>
         <label for="authEmail">Email</label>
-        <input type="email" id="authEmail" autofocus required autocomplete="username" />
+        <input type="email" id="authEmail" required autocomplete="username" />
         <label for="authPassword">Password</label>
         <input type="password" id="authPassword" required autocomplete="current-password" />
-        <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+        <p id="authError" class="error-text"></p>
+        <button type="submit" id="authSubmit" class="btn btn-primary btn-block">Sign in</button>
       </form>
-
-      <div class="login-divider">
-        <button type="button" id="microsoftSignInBtn" class="btn btn-block">Sign in with Microsoft</button>
-      </div>
-
-      <p id="authStatus" class="login-status"></p>
     </div>
   </div>
 
@@ -37,265 +29,69 @@
       <div class="crest" aria-hidden="true">HHS</div>
       <div>
         <h1 class="site-title">Hillcrest High School</h1>
-        <p class="site-subtitle">STUDENT ROSTER &amp; LOOKUP</p>
+        <p class="site-subtitle">STAFF DASHBOARD</p>
       </div>
       <div class="header-spacer"></div>
-
-      <!-- Admin auth widget: deliberately understated — only staff need it -->
-      <div id="authWidget" class="auth-widget" data-user-type="">
-        <nav id="authLinks" class="auth-links"></nav>
-        <span id="adminBadge" class="admin-badge is-hidden"></span>
-        <button id="addStudentModalBtn" class="staff-link is-hidden">+ Add student</button>
-        <button id="openBulkUpdateBtn" class="staff-link is-hidden">Bulk Update</button>
-        <button id="signOutBtn" class="staff-link is-hidden">Sign out</button>
-      </div>
-      <button id="openTimetableBtn" class="staff-link is-hidden" style="margin-left: 8px;">Timetables</button>
+      <span id="userBadge" class="admin-badge is-hidden"></span>
+      <button id="signOutBtn" type="button" class="staff-link is-hidden">Sign out</button>
     </div>
   </header>
 
   <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner" aria-hidden="true"></span><span>Checking your access…</span></div>
 
-    <form id="searchForm" class="control-rail" novalidate>
-      <div class="field-row">
-        <div class="field-grow">
-          <label for="query">Search</label>
-          <input type="text" id="query" name="query" placeholder="Admin number, student name, or class…"
-            autocomplete="off" />
-        </div>
+    <div id="app" class="is-hidden">
+      <p id="deniedMsg" class="dash-denied is-hidden"></p>
+
+      <form id="quickForm" class="quick" role="search">
+        <label for="quickQ" class="quick-label">Find a student</label>
+        <input type="text" id="quickQ" placeholder="Admin number or name" autocomplete="off" />
+        <button type="submit" class="btn btn-primary">Search</button>
+      </form>
+
+      <div class="dash-grid">
         <div>
-          <label for="field">Search field</label>
-          <select id="field" name="field">
-            <option value="auto" selected>Auto (admin / name / class)</option>
-            <option value="admin">Admin No</option>
-            <option value="name">Name</option>
-            <option value="class">Registration class</option>
-          </select>
-        </div>
-        <div class="field-row-actions">
-          <button type="submit" class="btn btn-primary">Search</button>
-          <button type="button" id="openFiltersBtn" class="btn btn-ghost">
-            Filters <span id="filterCountBadge" class="filter-count-badge is-hidden">0</span>
-          </button>
-          <button type="button" id="resetBtn" class="btn btn-ghost">Clear all</button>
-        </div>
-      </div>
-
-      <div id="activeFilters" class="active-filters"></div>
-    </form>
-
-    <!-- Student Teams Management Modal -->
-    <div id="studentTeamsModal" class="modal-wrapper is-hidden">
-      <div class="modal-backdrop" id="teamsModalCloseScrim"></div>
-      <div class="modal-card">
-        <div class="modal-header">
-          <div>
-            <h3 class="modal-title" id="teamsModalTitle">Manage Student Teams</h3>
-            <p class="modal-subtitle" id="teamsModalSubtitle">Student: -</p>
-          </div>
-          <button type="button" class="btn-close" id="closeTeamsModalBtn">&times;</button>
+          <section id="tiles" aria-label="Pages"></section>
+          <section id="rosterPanel" class="panel is-hidden" aria-label="Student data">
+            <h2 class="panel-title">Student data</h2>
+            <p id="rosterInfo" class="empty-hint"></p>
+            <label class="chk-inline"><input type="checkbox" id="rosterUrgent" /> Urgent: reload immediately, ignoring the 6-hour limit</label>
+            <p id="rosterMsg" class="plan-msg"></p>
+            <button type="button" id="rosterBtn" class="btn btn-primary">Refresh student data for everyone</button>
+          </section>
         </div>
 
-        <form id="studentTeamsForm">
-          <div class="modal-body" id="teamsListContainer">
-            <!-- Team rows will be dynamically populated here -->
+        <aside class="panel notices" aria-label="School notices">
+          <div class="panel-row">
+            <h2 class="panel-title">Notices</h2>
+            <button type="button" id="noticeRefresh" class="btn btn-ghost">Refresh</button>
           </div>
+          <p id="noticeMeta" class="empty-hint"></p>
+          <div id="noticeList"></div>
 
-          <div class="modal-actions-bar">
-            <button type="button" class="btn btn-secondary" id="addTeamRowBtn">+ Add Team</button>
-          </div>
-
-          <div class="modal-footer">
-            <p id="teamsModalError" class="error-text" style="color: #dc3545; font-size: 0.85rem;"></p>
-            <div class="btn-group">
-              <button type="button" class="btn btn-outline" id="cancelTeamsModalBtn">Cancel</button>
-              <button type="submit" class="btn btn-primary" id="saveTeamsBtn">Save Changes</button>
+          <form id="noticeForm" class="notice-form is-hidden" novalidate>
+            <h3 class="pool-title">Post a notice</h3>
+            <label for="nTitle">Title</label>
+            <input type="text" id="nTitle" maxlength="80" autocomplete="off" />
+            <label for="nBody">Message</label>
+            <textarea id="nBody" rows="3" maxlength="500"></textarea>
+            <div class="notice-row">
+              <div><label for="nLevel">Importance</label>
+                <select id="nLevel"><option value="info">Information</option><option value="important">Important</option><option value="urgent">Urgent</option></select></div>
+              <div><label for="nExpires">Hide after (optional)</label><input type="date" id="nExpires" /></div>
             </div>
-          </div>
-        </form>
+            <label>Show to (none ticked = everyone)</label>
+            <div id="nAudience" class="notice-aud"></div>
+            <p class="empty-hint">Notices are visible to all signed-in staff. Do not post learner or other confidential details.</p>
+            <p id="noticeMsg" class="plan-msg"></p>
+            <button type="submit" id="noticeBtn" class="btn btn-primary">Post notice</button>
+          </form>
+        </aside>
       </div>
-    </div>
-
-    <!-- Filter panel: inline, collapsed by default, sits below the search bar -->
-    <section id="filterModal" class="filter-panel is-hidden" aria-label="Filters">
-      <div class="filter-panel-header">
-        <h2 class="modal-title">Filters</h2>
-        <button id="filterModalClose" class="drawer-close" aria-label="Close">&times;</button>
-      </div>
-      <div class="modal-grid">
-        <div>
-          <label for="filterGrade">Grade</label>
-          <select id="filterGrade">
-            <option value="">All grades</option>
-            <option value="8">Grade 8</option>
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
-            <option value="11">Grade 11</option>
-            <option value="12">Grade 12</option>
-          </select>
-        </div>
-        <div>
-          <label for="filterClass">Class</label>
-          <select id="filterClass">
-            <option value="">All classes</option>
-          </select>
-        </div>
-        <div>
-          <label for="filterGender">Gender</label>
-          <select id="filterGender">
-            <option value="">All</option>
-            <option value="Female">Female</option>
-            <option value="Male">Male</option>
-          </select>
-        </div>
-        <div>
-          <label for="filterSubject">Subject</label>
-          <select id="filterSubject">
-            <option value="">All subjects</option>
-          </select>
-        </div>
-        <div>
-          <label for="filterLine">Subject Line</label>
-          <select id="filterLine">
-            <option value="">All lines</option>
-          </select>
-        </div>
-        <div>
-          <label for="filterTeacher">Teacher</label>
-          <select id="filterTeacher" disabled>
-            <option value="">Select a subject first</option>
-          </select>
-        </div>
-      </div>
-      <div>
-        <label for="filterTeam">Team</label>
-        <select id="filterTeam">
-          <option value="">All teams</option>
-        </select>
-      </div>
-      <div>
-        <label for="filterAgeGroup">Age Group</label>
-        <select id="filterAgeGroup" disabled>
-          <option value="">Select a team first</option>
-        </select>
-      </div>
-      <div class="filter-panel-footer">
-        <button type="button" id="filterClearBtn" class="btn btn-ghost">Clear all</button>
-        <button type="button" id="filterApplyBtn" class="btn btn-primary">Apply filters</button>
-      </div>
-    </section>
-
-    <div class="results-meta">
-      <span id="resultCount">Loading…</span>
-      <div class="results-actions" style="display: flex; gap: 12px; align-items: center;">
-        <button type="button" id="printCardsBtn" class="btn btn-ghost is-hidden">Print / Export PDF</button>
-        <div class="layout-toggle" role="group" aria-label="Result layout">
-          <button type="button" class="layout-btn is-active" data-layout="list">List</button>
-          <button type="button" class="layout-btn" data-layout="grid2">Grid · 2</button>
-          <button type="button" class="layout-btn" data-layout="grid4">Grid · 4</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="loadingState" class="loading-state">
-      <span class="spinner" aria-hidden="true"></span>
-      <span>Loading student roster…</span>
-    </div>
-
-    <div id="tableWrap" class="table-wrap is-hidden">
-      <table>
-        <thead>
-          <tr>
-            <th></th>
-            <th>Name</th>
-            <th>Admin No</th>
-            <th>Grade / Class</th>
-            <th>Gender</th>
-            <th>Subjects</th>
-          </tr>
-        </thead>
-        <tbody id="resultsBody"></tbody>
-      </table>
-    </div>
-
-    <div id="cardsWrap" class="cards-wrap is-hidden">
-      <div id="resultsGrid" class="results-grid"></div>
     </div>
   </main>
 
-  <div id="scrim" class="scrim"></div>
-  <aside id="drawer" class="drawer" aria-label="Student details">
-    <button id="drawerClose" class="drawer-close" aria-label="Close">&times;</button>
-    <div id="drawerHeader" class="drawer-header"></div>
-    <div id="drawerContent"></div>
-  </aside>
-
-  <!-- Timetable Management Modal Section -->
-  <!-- Student Personalised & Staff Editable Timetable Modal -->
-  <div id="timetableModal" class="modal-wrapper is-hidden" aria-label="Student Timetable">
-    <div class="modal-backdrop" id="timetableModalScrim"></div>
-    <div class="modal-card modal-card-wide">
-      <div class="modal-header">
-        <div>
-          <h2 class="modal-title" id="ttModalTitle">Grade -- Timetable</h2>
-          <p class="modal-subtitle" id="ttModalSubtitle">Student: --</p>
-          <select id="ttGradeSelect" class="is-hidden">
-            <option value="8">Grade 8</option>
-            <option value="9">Grade 9</option>
-            <option value="10">Grade 10</option>
-            <option value="11">Grade 11</option>
-            <option value="12">Grade 12</option>
-          </select>
-          <select id="ttClassSelect" class="is-hidden"></select>
-
-        </div>
-        <button type="button" class="drawer-close" id="closeTimetableModalBtn" aria-label="Close">&times;</button>
-      </div>
-
-      <div class="modal-body">
-        <!-- Staff Controls Toolbar (Only visible in Staff Edit Mode) -->
-    
-        <div id="ttStaffToolbar" class="timetable-toolbar is-hidden">
-          <span id="ttEditBadge" class="tt-edit-badge">Editing</span>
-          <span class="tt-edit-badge">Editing Line Numbers Mode</span>
-          <div class="tt-grid-actions">
-            <div class="btn-group">
-              <button type="button" id="ttAddDayBtn" class="btn btn-ghost">+ Day</button>
-              <button type="button" id="ttRemoveDayBtn" class="btn btn-ghost">- Day</button>
-            </div>
-            <div class="btn-group">
-              <button type="button" id="ttAddPeriodBtn" class="btn btn-ghost">+ Period</button>
-              <button type="button" id="ttRemovePeriodBtn" class="btn btn-ghost">- Period</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Error / Success Notice -->
-        <div id="ttStatusNotice" class="tt-status-notice is-hidden"></div>
-
-        <!-- Dynamic Grid Wrapper -->
-        <div class="tt-grid-container">
-          <table class="tt-table">
-            <thead id="ttGridHeader"></thead>
-            <tbody id="ttGridBody"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <div id="ttMetaInfo" class="tt-meta-info"></div>
-        <div class="btn-group">
-          <button type="button" id="ttEditBtn" class="btn btn-primary is-hidden">Edit Timetable</button>
-          <button type="button" id="ttCancelEditBtn" class="btn btn-ghost is-hidden">Cancel Editing</button>
-          <button type="button" id="ttSaveBtn" class="btn btn-primary is-hidden">Save Changes</button>
-          <button type="button" id="ttCloseBtn" class="btn btn-outline">Close</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Env config must load before any module that reads window.APP_CONFIG -->
   <script src="js/config.js"></script>
-  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/dashboard.js"></script>
 </body>
-
 </html>

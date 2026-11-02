@@ -1,0 +1,50 @@
+/* dashboard.css — palette and base from style.css */
+.header-spacer{flex:1}
+.staff-link{background:none;border:none;color:var(--gold-soft);font:inherit;font-size:.82rem;cursor:pointer;text-decoration:underline;padding:4px 6px}
+.staff-link:hover{color:#fff}
+.admin-badge{font-size:.8rem;color:var(--gold-soft);background:rgba(255,255,255,.08);padding:6px 10px;border-radius:999px}
+.admin-badge.is-hidden,.staff-link.is-hidden{display:none}
+input[type=email],input[type=password],input[type=date],textarea{width:100%;border:1px solid var(--line-strong);border-radius:8px;padding:10px 12px;font:inherit;font-size:.92rem;background:#fff;color:var(--text)}
+input:focus,textarea:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-soft)}
+.login-card .error-text:empty{display:none}.login-card .btn-block{margin-top:14px}
+
+.quick{display:flex;gap:10px;align-items:end;background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;margin-bottom:20px}
+.quick-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.quick input{flex:1}
+.dash-denied{background:#f3dcdc;color:var(--maroon);border-radius:8px;padding:10px 14px;font-weight:600;margin:0 0 16px}
+
+.dash-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+.tile-group{margin-bottom:22px}
+.tile-group h2{font-family:var(--font-serif);font-size:1.05rem;color:var(--ink);margin:0 0 10px;border-bottom:2px solid var(--gold);padding-bottom:6px}
+.tile-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
+.tile{display:block;text-decoration:none;color:inherit;background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px}
+.tile:hover,.tile:focus-visible{border-color:var(--gold);box-shadow:var(--shadow-sm);outline:none}
+.tile strong{display:block;color:var(--ink);font-size:.95rem}
+.tile span{display:block;margin-top:4px;font-size:.78rem;color:var(--text-muted);line-height:1.35}
+
+.panel{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:18px 20px}
+.panel-title{font-family:var(--font-serif);font-size:1.1rem;color:var(--ink);margin:0 0 6px}
+.panel-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pool-title{font-family:var(--font-serif);font-size:.95rem;margin:18px 0 6px;color:var(--ink)}
+.notices{position:sticky;top:12px}
+
+.notice{border:1px solid var(--line);border-left-width:5px;border-radius:8px;padding:10px 12px;margin-top:10px;background:#fff}
+.notice.lvl-important{border-left-color:var(--gold)}
+.notice.lvl-urgent{border-left-color:var(--maroon);background:#fbf1f1}
+.notice.lvl-info{border-left-color:var(--ink-soft)}
+.notice h3{margin:0;font-size:.92rem;color:var(--ink)}
+.notice p{margin:4px 0 0;font-size:.86rem;white-space:pre-line;line-height:1.4}
+.notice small{display:block;margin-top:6px;color:var(--text-muted);font-size:.72rem}
+.notice-del{float:right;border:none;background:none;color:var(--maroon);cursor:pointer;font-size:.78rem;text-decoration:underline}
+.notice-form{border-top:1px solid var(--line);margin-top:16px}
+.notice-form label{margin-top:10px}
+.notice-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.notice-aud{display:flex;flex-wrap:wrap;gap:8px}
+.notice-aud label{display:inline-flex;gap:6px;align-items:center;margin:0;text-transform:none;letter-spacing:0;font-size:.82rem;font-weight:500;color:var(--text)}
+.plan-msg{margin:8px 0;font-size:.86rem}.plan-msg:empty{display:none}
+.ok{color:#2f6b3a;font-weight:600}.err{color:var(--maroon);font-weight:600}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:860px){.dash-grid{grid-template-columns:1fr}.notices{position:static;order:-1}.quick{flex-wrap:wrap}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.chk-inline{display:flex;gap:8px;align-items:center;text-transform:none;letter-spacing:0;font-size:.84rem;font-weight:500;color:var(--text);margin:10px 0}
+#rosterPanel{margin-top:6px}
