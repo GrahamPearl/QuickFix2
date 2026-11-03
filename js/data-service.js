@@ -11,6 +11,7 @@
  */
 import { auth, db, collection, getDocs } from "./firebase-init.js";
 import { getRosterSettings, ROSTER_DEFAULTS } from "./settings-service.js";
+import { loadIndex } from "./roster-index.js";
 
 const { STUDENTS_COLLECTION } = window.APP_CONFIG;
 const KEY = `hhs_cache_${STUDENTS_COLLECTION}_v2`;
@@ -46,9 +47,16 @@ function useCache(maxH) {
   return false;
 }
 
-async function fetchAll(forceSeen) {
-  const snap = await getDocs(collection(db, STUDENTS_COLLECTION));
-  memoryCache = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+/** Prefers the roster index (about 5 reads); falls back to reading every student if it is missing/unusable. */
+async function fetchAll(forceSeen, settings = null) {
+  let students = null;
+  try { students = await loadIndex({ expectChunks: settings?.indexChunks || 0 }); }
+  catch (e) { console.warn("Roster index unavailable, reading students directly:", e.code || e.message); }
+  if (!students) {
+    const snap = await getDocs(collection(db, STUDENTS_COLLECTION));
+    students = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+  memoryCache = students;
   meta = { loadedAt: Date.now(), forceSeen: forceSeen || 0 };
   writeCache();
   return memoryCache;
@@ -74,7 +82,7 @@ export async function ensureFreshRoster() {
     await fetchAll(have?.forceSeen);
     return out(true);
   }
-  if (needsReload(have, s)) { await fetchAll(s.forceRefreshAt); return out(true); }
+  if (needsReload(have, s)) { await fetchAll(s.forceRefreshAt, s); return out(true); }
   return out(false);
 }
 

@@ -7,6 +7,7 @@ import { loadUserTypes, resolveUserType, can, getTypeDef, typeKeys } from "./use
 import { visiblePages } from "./pages.js";
 import { loadNotices, postNotice, removeNotice, visibleNotices } from "./notices-service.js";
 import { getRosterSettings, requestRosterRefresh } from "./settings-service.js";
+import { rebuildIndex } from "./roster-index.js";
 import { escapeHtml as esc } from "./html.js";
 
 const $ = (id) => document.getElementById(id);
@@ -149,6 +150,10 @@ async function setupRoster() {
     $("rosterInfo").textContent = s.forceRefreshAt
       ? `Last refresh requested ${new Date(s.forceRefreshAt).toLocaleString()}${s.updatedBy ? ` by ${s.updatedBy}` : ""}. Users reload on their next search; a normal request waits until their copy is ${s.minIntervalHours} hours old.`
       : "No refresh has been requested yet.";
+    const built = s.indexBuiltAt?.toMillis ? new Date(s.indexBuiltAt.toMillis()).toLocaleString() : null;
+    $("rosterInfo").textContent += s.indexChunks
+      ? ` Roster index: ${s.indexCount ?? "?"} students in ${s.indexChunks} chunk(s), fully rebuilt ${built || "—"}.`
+      : " No roster index built yet: every user load reads every student.";
   } catch (err) { $("rosterInfo").textContent = `Could not read settings: ${err.message}`; }
 }
 $("rosterBtn").addEventListener("click", async () => {
@@ -159,4 +164,16 @@ $("rosterBtn").addEventListener("click", async () => {
   try { await requestRosterRefresh({ user: me.user, urgent, reason: "manual" }); say("rosterMsg", "Refresh requested.", "ok"); await setupRoster(); }
   catch (err) { say("rosterMsg", `Could not request refresh: ${err.message}`, "err"); }
   finally { $("rosterBtn").disabled = false; }
+});
+
+$("indexBtn").addEventListener("click", async () => {
+  if (!me || !can(cfg, me.type, "refreshRoster")) return;
+  if (!confirm("Rebuild the roster index? This reads every student once and replaces the index for all users.")) return;
+  $("indexBtn").disabled = true; say("rosterMsg", "Rebuilding… (reading all students)", "warn");
+  try {
+    const r = await rebuildIndex({ user: me.user });
+    say("rosterMsg", `Index rebuilt: ${r.students} students in ${r.chunks} chunk(s). Users reload on their next search.`, "ok");
+    await setupRoster();
+  } catch (err) { say("rosterMsg", `Rebuild failed: ${err.message}`, "err"); }
+  finally { $("indexBtn").disabled = false; }
 });

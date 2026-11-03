@@ -8,7 +8,7 @@ import { db, doc, getDoc, setDoc, serverTimestamp } from "./firebase-init.js";
 const COL = window.APP_CONFIG.SETTINGS_COLLECTION || "setting";
 const ref = () => doc(db, COL, "roster");
 
-export const ROSTER_DEFAULTS = { forceRefreshAt: 0, urgent: false, minIntervalHours: 6, maxAgeHours: 24 };
+export const ROSTER_DEFAULTS = { forceRefreshAt: 0, urgent: false, minIntervalHours: 6, maxAgeHours: 24, indexChunks: 0 };
 
 export async function getRosterSettings() {
   const snap = await getDoc(ref());

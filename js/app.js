@@ -12,6 +12,8 @@ import {
   getDoc,
   OAuthProvider,
   signInWithPopup,
+  runTransaction,
+  serverTimestamp,
 } from "./firebase-init.js";
 
 import {
@@ -21,6 +23,7 @@ import {
   patchCachedStudent,
   clearRosterCache,
   ensureFreshRoster,
+  addCachedStudent,
 } from "./data-service.js";
 
 import { filterStudents, sortStudents } from "./search.js";
@@ -51,6 +54,9 @@ import {
   can,
   resolveUserType,
 } from "./usertypes.js";
+
+import { validateDraft } from "./edit-form.js"; // NEW
+import { escapeHtml } from "./html.js";
 
 const els = {
   form: document.getElementById("searchForm"),
@@ -138,12 +144,8 @@ function applyRoster(raw) {
   roster = raw.filter((s) => s && s.adminNo);
   populateSelect(els.subject, collectSubjects(roster), "All subjects");
   populateSelect(els.line, collectLines(roster), "All lines");
-  refreshClassOptions(); refreshTeacherOptions();
-}
-async function loadRoster() {            // replaces the old version
-  const { students, reloaded } = await ensureFreshRoster();
-  applyRoster(students);
-  return reloaded;
+  refreshClassOptions();
+  refreshTeacherOptions();
 }
 
 // Re-check at most every 10 minutes, on search submit or when the tab is shown again
@@ -153,11 +155,22 @@ async function recheckRoster() {
   lastCheck = Date.now();
   try {
     const { students, reloaded } = await ensureFreshRoster();
-    if (reloaded) { applyRoster(students); runSearch(); }
-  } catch (e) { console.warn("Roster check failed", e); }
+    if (reloaded) {
+      applyRoster(students);
+      runSearch();
+    }
+  } catch (e) {
+    console.warn("Roster check failed", e);
+  }
 }
-els.form.addEventListener("submit", async (e) => { e.preventDefault(); await recheckRoster(); runSearch(); });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) recheckRoster(); });
+els.form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await recheckRoster();
+  runSearch();
+});
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) recheckRoster();
+});
 
 function showLoginRequired() {
   els.resultCount.textContent = "Sign in to view students";
@@ -301,7 +314,7 @@ onAuthStateChanged(auth, async (user) => {
   if (user.uid !== previousUid) {
     if (!(await loadAll())) return;
   }
- 
+
   runSearch();
 });
 
@@ -310,12 +323,10 @@ function focusLogin() {
 }
 
 async function loadRoster({ forceRefresh = false } = {}) {
-  const raw = await getAllStudents({ forceRefresh });
-  roster = raw.filter((s) => s && s.adminNo);
-  populateSelect(els.subject, collectSubjects(roster), "All subjects");
-  populateSelect(els.line, collectLines(roster), "All lines");
-  refreshClassOptions();
-  refreshTeacherOptions();
+  const students = forceRefresh
+    ? await getAllStudents({ forceRefresh: true })
+    : (await ensureFreshRoster()).students;
+  applyRoster(students);
 }
 
 function runSearch() {
@@ -595,7 +606,6 @@ function debounce(fn, ms) {
 }
 
 async function wireEvents() {
-
   els.resultsGrid.addEventListener("click", (e) => {
     const card = e.target.closest(".student-card");
     if (card) openDrawer(card.dataset.adminNo);
@@ -629,30 +639,13 @@ async function wireEvents() {
   });
   els.class.addEventListener("change", runSearch);
 
-  els.resetBtn.addEventListener("click", async () => {
+  els.resetBtn.addEventListener("click", () => {
     els.query.value = "";
     els.field.value = "auto";
     resetFilterControls();
     els.filterModal.classList.add("is-hidden");
     closeDrawer();
-    updateFilterBadge();
-
-    els.resetBtn.disabled = true;
-    els.resultCount.textContent = "Reloading…";
-    els.tbody.innerHTML = "";
-    els.resultsGrid.innerHTML = "";
-
-    try {
-      clearRosterCache();
-      await loadRoster({ forceRefresh: false });
-      await loadAvailableTeams();
-      runSearch(); // render only after fresh data is in
-    } catch (err) {
-      console.error("Reload failed:", err);
-      els.resultCount.textContent = "Couldn't reload the roster";
-    } finally {
-      els.resetBtn.disabled = false;
-    }
+    runSearch(); // also updates the filter badge
   });
 
   els.tbody.addEventListener("click", (e) => {
@@ -1179,78 +1172,113 @@ els.addStudentModalBtn.addEventListener("click", () => {
   document.body.classList.add("no-scroll");
 });
 
-els.drawerContent.addEventListener("submit", (e) => {
+els.drawerContent.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   if (e.target.id === "addStudentStep1Form") {
-    const adminNoInput = document.getElementById("newAdminNo").value.trim();
     const errorEl = document.getElementById("step1Error");
-
-    if (!adminNoInput) {
+    const raw = document.getElementById("newAdminNo").value.trim();
+    if (!raw) {
       errorEl.textContent = "Admin Number cannot be empty.";
       return;
     }
 
-    const exists = roster.some(
-      (s) => String(s.adminNo) === String(adminNoInput),
-    );
-    if (exists) {
-      errorEl.textContent = `A student with Admin Number "${adminNoInput}" already exists in storage.`;
+    const adminNoInput = raw.padStart(5, "0");
+    if (!/^\d{5}$/.test(adminNoInput)) {
+      errorEl.textContent = "Admin Number must be 5 digits.";
+      return;
+    }
+    if (roster.some((s) => String(s.adminNo) === adminNoInput)) {
+      errorEl.textContent = `A student with Admin Number "${adminNoInput}" already exists.`;
       return;
     }
 
     newStudentDraft.adminNo = adminNoInput;
-    const allSubjects = collectSubjects(roster);
     els.drawerContent.innerHTML = renderAddStudentForm(
       2,
       adminNoInput,
       newStudentDraft,
-      allSubjects,
+      collectSubjects(roster),
     );
+    return;
   }
 
   if (e.target.id === "addStudentStep2Form") {
-  const errorEl = document.getElementById("step2Error");
-  els.drawerContent.querySelectorAll("[data-field]").forEach((i) => {
-    newStudentDraft[i.dataset.field] = i.value;
-  });
-  const problems = validateDraft(newStudentDraft);
-  if (problems.length) { errorEl.textContent = problems.join(" · "); return; }
-
-  const low = (v) => String(v || "").trim().toLowerCase();
-  const adminNo = String(newStudentDraft.adminNo).trim().padStart(5, "0");
-  const first = newStudentDraft.firstName.trim(), last = newStudentDraft.lastName.trim();
-  const cls = newStudentDraft.class.trim();
-  const rec = {
-    id: adminNo, adminNo, firstName: first, lastName: last, fullName: `${first} ${last}`.trim(),
-    grade: Number(newStudentDraft.grade), class: cls, registrationClass: cls,
-    gender: newStudentDraft.gender, birthdate: newStudentDraft.birthdate || "", agegroup: "",
-    photo: `${adminNo}.webp`,
-    searchTokens: [...new Set([adminNo, low(first), low(last), `${low(first)} ${low(last)}`.trim()])],
-    subjectsSummary: newStudentDraft.subjectsSummary,
-    enrollments: newStudentDraft.enrollments,
-    teams: [], academic: { candidateNo: null, examNo: null }, flags: { concession: false },
-  };
-
-  const btn = e.target.querySelector('[type="submit"]');
-  btn.disabled = true;
-  try {
-    const ref = doc(db, "students", adminNo);
-    runTransaction(db, async (tx) => {
-      if ((await tx.get(ref)).exists()) throw new Error(`Student ${adminNo} already exists.`);
-      tx.set(ref, { ...rec, createdBy: currentUser.email, createdAt: serverTimestamp(),
-                    updatedBy: currentUser.email, updatedAt: serverTimestamp() });
+    const errorEl = document.getElementById("step2Error");
+    els.drawerContent.querySelectorAll("[data-field]").forEach((i) => {
+      newStudentDraft[i.dataset.field] = i.value;
     });
-    roster.unshift(rec);          // local copy has no server-timestamp sentinels
-    addCachedStudent(rec);
-    closeDrawer();
-    runSearch();
-  } catch (err) {
-    errorEl.textContent = `Could not save: ${err.message}`;
-  } finally {
-    btn.disabled = false;
+
+    const problems = validateDraft(newStudentDraft);
+    if (problems.length) {
+      errorEl.textContent = problems.join(" · ");
+      return;
+    }
+
+    const low = (v) =>
+      String(v || "")
+        .trim()
+        .toLowerCase();
+    const adminNo = String(newStudentDraft.adminNo).trim().padStart(5, "0");
+    const first = newStudentDraft.firstName.trim();
+    const last = newStudentDraft.lastName.trim();
+    const cls = newStudentDraft.class.trim();
+
+    const rec = {
+      id: adminNo,
+      adminNo,
+      firstName: first,
+      lastName: last,
+      fullName: `${first} ${last}`.trim(),
+      grade: Number(newStudentDraft.grade),
+      class: cls,
+      registrationClass: cls,
+      gender: newStudentDraft.gender,
+      birthdate: newStudentDraft.birthdate || "",
+      agegroup: "",
+      photo: `${adminNo}.webp`,
+      searchTokens: [
+        ...new Set([
+          adminNo,
+          low(first),
+          low(last),
+          `${low(first)} ${low(last)}`.trim(),
+        ]),
+      ],
+      subjectsSummary: newStudentDraft.subjectsSummary || [],
+      enrollments: newStudentDraft.enrollments || {},
+      teams: [],
+      academic: { candidateNo: null, examNo: null },
+      flags: { concession: false },
+    };
+
+    const btn = e.target.querySelector('[type="submit"]');
+    btn.disabled = true;
+    errorEl.textContent = "";
+    try {
+      const ref = doc(db, "students", adminNo);
+      await runTransaction(db, async (tx) => {
+        // awaited now
+        if ((await tx.get(ref)).exists())
+          throw new Error(`Student ${adminNo} already exists.`);
+        tx.set(ref, {
+          ...rec,
+          createdBy: currentUser.email,
+          createdAt: serverTimestamp(),
+          updatedBy: currentUser.email,
+          updatedAt: serverTimestamp(),
+        });
+      });
+      roster.unshift(rec); // local copy has no server-timestamp sentinels
+      addCachedStudent(rec);
+      closeDrawer();
+      runSearch();
+    } catch (err) {
+      errorEl.textContent = `Could not save: ${err.message}`;
+    } finally {
+      btn.disabled = false;
+    }
   }
-}
 });
 
 els.drawerContent.addEventListener("click", (e) => {
@@ -1261,25 +1289,22 @@ els.drawerContent.addEventListener("click", (e) => {
   if (e.target.id === "addNewSubjectBtn") {
     const select = document.getElementById("newSubjectSelect");
     const sub = select.value;
-    // ADDED RECOMMENDED FIX
-    newStudentDraft.enrollments[subKey] = { subject: sub, teacher: "", line: "" };
 
     if (sub && !newStudentDraft.subjectsSummary.includes(sub)) {
+      const subKey = sub.toLowerCase().replace(/[^a-z0-9]/g, ""); // declared before use
+
       newStudentDraft.subjectsSummary.push(sub);
-      const subKey = sub.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-
-      if (!newStudentDraft.enrollments) newStudentDraft.enrollments = {};
+      newStudentDraft.enrollments ||= {};
       newStudentDraft.enrollments[subKey] = {
-        teacher: "Unassigned",
-        line: newStudentDraft.subjectsSummary.length,
+        subject: sub,
+        teacher: "",
+        line: "",
       };
 
-      const chipsHtml = newStudentDraft.subjectsSummary
-        .map((s) => `<span class="chip">${s}</span>`)
-        .join("");
       document.getElementById("newSubjectsList").innerHTML =
-        chipsHtml || `<span class="empty-hint">No subjects added yet</span>`;
+        newStudentDraft.subjectsSummary
+          .map((s) => `<span class="chip">${escapeHtml(s)}</span>`)
+          .join("") || `<span class="empty-hint">No subjects added yet</span>`;
       select.value = "";
     }
   }
@@ -1423,12 +1448,14 @@ function init() {
   wireEvents();
   initTimetableModule({
     getClasses: (grade) =>
-      [...new Set(
-        roster
-          .filter((s) => String(s.grade) === String(grade))
-          .map((s) => String(s.registrationClass || s.class || "").trim())
-          .filter(Boolean),
-      )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+      [
+        ...new Set(
+          roster
+            .filter((s) => String(s.grade) === String(grade))
+            .map((s) => String(s.registrationClass || s.class || "").trim())
+            .filter(Boolean),
+        ),
+      ].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
   });
   document.getElementById("openTimetableBtn")?.addEventListener("click", () => {
     if (!can(userTypes, userType, "editTimetable")) return;

@@ -2,65 +2,78 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function userDoc(id) {
-      return /databases/$(database)/documents/authorized_users/$(id);
-    }
-
-    // Returns the signed-in user's type, looked up by UID then by email; null if not listed.
+    // The user's type comes from authorized_users (doc id = uid or lower-cased email). Values must equal
+    // the keys in json/usertypes.json exactly (e.g. 'staff-head', not 'staffhead').
+    function userDoc(id) { return /databases/$(database)/documents/authorized_users/$(id); }
     function myType() {
       return request.auth == null ? null :
         (exists(userDoc(request.auth.uid))
           ? get(userDoc(request.auth.uid)).data.type
-          : (request.auth.token.email != null &&
-             exists(userDoc(request.auth.token.email.lower()))
-              ? get(userDoc(request.auth.token.email.lower())).data.type
-              : null));
+          : (request.auth.token.email != null && exists(userDoc(request.auth.token.email.lower()))
+              ? get(userDoc(request.auth.token.email.lower())).data.type : null));
     }
 
-    function canRead()  { return myType() != null && myType() in ['admin', 'staff-head', 'slt', 'staff', 'staff-gc', 'staff-office']; }
-    function isAdminOrHead() { return myType() in ['admin', 'staff-head']; }
+    function canRead()      { return myType() in ['admin', 'staff-head', 'staff-gc', 'staff-office', 'staff', 'slt']; }
+    function canEdit()      { return myType() in ['admin', 'staff-head', 'staff-gc']; }   // "edit" permission
+    function isAdminOrHead(){ return myType() in ['admin', 'staff-head']; }
+    function isAdmin()      { return myType() == 'admin'; }
+    function reviewer()     { return myType() in ['admin', 'staff-head', 'staff-gc']; }   // hallPassReview
+    function hallStaff()    { return myType() in ['admin', 'staff-head', 'staff-gc', 'staff']; } // hallPass
 
     match /authorized_users/{id} {
-      // Allow any authenticated user to read authorized_users
       allow read: if request.auth != null;
-      // Allow administrators and head staff to add/edit authorized users
       allow write: if isAdminOrHead();
     }
 
     match /students/{adminNo} {
       allow read:  if canRead();
-      allow write: if isAdminOrHead();
+      allow write: if canEdit();
+    }
+
+    // Compact roster copy (see js/roster-index.js). Anyone who can read students may read it;
+    // anyone who can edit students may keep it in step.
+    match /rosterIndex/{id} {
+      allow read:  if canRead();
+      allow write: if canEdit();
+    }
+
+    // Shared settings: admins/heads may change anything; editors may only touch the roster-index bookkeeping fields.
+    match /setting/{id} {
+      allow read:   if canRead();
+      allow create, delete: if isAdminOrHead();
+      allow update: if isAdminOrHead() ||
+        (canEdit() && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['forceRefreshAt', 'indexChunks', 'indexCount', 'indexUpdatedAt']));
     }
 
     match /teams/{id} {
       allow read:  if canRead();
-      allow write: if false;
+      allow write: if myType() in ['admin', 'staff-head', 'staff-gc'];   // editTeams
     }
 
     match /timetables/{id} {
-      // Allows staff, SLT, staff heads, and admins to view timetable data
       allow read:  if canRead();
-      // Allows admins and staff heads to create/update/delete timetables
-      allow write: if isAdminOrHead();
+      allow write: if isAdminOrHead();                                   // editTimetable
     }
 
-    function t() { return get(/databases/$(database)/documents/authorized_users/$(request.auth.token.email.lower())).data.type; }
-function staff() { return request.auth != null && t() in ['admin','staff-head','staff-gc','staff-office','staff']; }
-function reviewer() { return request.auth != null && t() in ['admin','staff-head','staff-gc']; }
+    match /active-hall-passes/{email} {
+      allow read:  if hallStaff();
+      allow write: if hallStaff() && (request.auth.token.email.lower() == email || reviewer());
+    }
+    match /history-hall-pass/{id} {
+      allow create: if hallStaff();
+      allow read:   if reviewer();
+      allow update, delete: if false;   // immutable ledger
+    }
 
-match /active-hall-passes/{email} {
-  allow read: if staff();
-  allow write: if staff() && (request.auth.token.email.lower() == email || reviewer());
-}
-match /history-hall-pass/{id} {
-  allow create: if staff();
-  allow read: if reviewer();
-  allow update, delete: if false;   // immutable ledger
-}
+    match /notices/{id} {
+      allow read:  if myType() != null;
+      allow write: if isAdminOrHead();   // postNotices
+    }
 
-  match /notices/{id} {
-     allow read: if myType() != null;
-     allow write: if myType() in ['admin', 'staff-head'];
-   }
+    match /seatingPlans/{id}       { allow read, write: if canRead(); }
+    match /lsuSeatingVenues/{id}   { allow read: if canRead(); allow write: if canEdit(); }
+    match /allocation-batches/{id} { allow read: if isAdmin(); allow create, update: if isAdmin(); }   // bulkAllocate
+    match /import-batches/{id}     { allow read: if isAdmin(); allow create: if isAdmin(); }            // bulkImport
   }
 }
