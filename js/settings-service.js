@@ -3,12 +3,22 @@
  *   { forceRefreshAt (server time), urgent, minIntervalHours, maxAgeHours, reason, updatedBy, updatedAt }
  * Reading it costs 1 read. Only users with "refreshRoster" should write it (enforce in Rules).
  */
-import { db, doc, getDoc, setDoc, serverTimestamp } from "./firebase-init.js";
+import {
+  db, doc, getDoc, collection, getCountFromServer, runTransaction, serverTimestamp,
+} from "./firebase-init.js";
 
 const COL = window.APP_CONFIG.SETTINGS_COLLECTION || "setting";
+const STUDENTS = window.APP_CONFIG.STUDENTS_COLLECTION || "students";
 const ref = () => doc(db, COL, "roster");
-
 export const ROSTER_DEFAULTS = { forceRefreshAt: 0, urgent: false, minIntervalHours: 6, maxAgeHours: 24, indexChunks: 0 };
+export const DAILY_READ_QUOTA = 50000;       // Firebase Spark limit
+const MIN_GAP_HOURS = { normal: 1, urgent: 24 };
+
+export async function estimateRefreshCost(usersCollection = "authorized_users") {
+  const count = async (name) => (await getCountFromServer(collection(db, name))).data().count;
+  const [students, users] = await Promise.all([count(STUDENTS), count(usersCollection)]);
+  return { students, users, reads: students * users };
+}
 
 export async function getRosterSettings() {
   const snap = await getDoc(ref());
@@ -18,9 +28,22 @@ export async function getRosterSettings() {
 }
 
 /** Asks every user's browser to reload the roster. urgent=true ignores the minimum-interval guard. */
-export function requestRosterRefresh({ user, urgent = false, reason = "" }) {
-  return setDoc(ref(), {
-    forceRefreshAt: serverTimestamp(), urgent, reason,
-    updatedBy: user?.email || "", updatedAt: serverTimestamp(),
-  }, { merge: true });
+export async function requestRosterRefresh({ user, urgent = false, reason = "" }) {
+  const r = ref();
+  await runTransaction(db, async (tx) => {
+    const d = (await tx.get(r)).data() || {};
+    const hoursSince = (t) => (t?.toMillis ? (Date.now() - t.toMillis()) / 3600000 : Infinity);
+
+    if (urgent && hoursSince(d.lastUrgentAt) < MIN_GAP_HOURS.urgent) {
+      throw new Error(`An urgent refresh was already requested ${Math.floor(hoursSince(d.lastUrgentAt))} h ago. Only one is allowed per 24 hours.`);
+    }
+    if (hoursSince(d.forceRefreshAt) < MIN_GAP_HOURS.normal) {
+      throw new Error("A refresh was requested less than an hour ago. Please wait.");
+    }
+    tx.set(r, {
+      forceRefreshAt: serverTimestamp(), urgent, reason,
+      ...(urgent ? { lastUrgentAt: serverTimestamp() } : {}),
+      updatedBy: user?.email || "", updatedAt: serverTimestamp(),
+    }, { merge: true });
+  });
 }

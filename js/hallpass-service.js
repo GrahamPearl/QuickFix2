@@ -12,9 +12,9 @@
  *  - serverTimestamp() is not allowed inside arrays, so entries use client Dates.
  */
 import { escapeHtml as esc } from "./html.js";
-import {
-  db, collection, doc, getDocs, onSnapshot, query, where, runTransaction,
-} from "./firebase-init.js";
+import { db, collection, doc, getDoc, getDocs, setDoc, onSnapshot, query, where, runTransaction, deleteField } from "./firebase-init.js";
+import { meter } from "./usage-meter.js";
+const IDX = () => doc(db, "hallpass-index", "out");
 
 const ACTIVE = "active-hall-passes";
 const HISTORY = "history-hall-pass";
@@ -52,12 +52,34 @@ export function normaliseAdminNo(v) {
 }
 
 /* ---------- live view of everyone out ---------- */
-export function watchActive(onRows, onError) {
-  return onSnapshot(
-    collection(db, ACTIVE),
-    (snap) => onRows(snap.docs.map((d) => ({ email: d.id, ...d.data() }))),
-    onError,
-  );
+const entriesOf = (teacher, list) => (list || []).map((e) => ({ ...e, teacher }));
+
+/** Regular staff: one document, one read per change to their own passes. */
+export function watchMine(email, onEntries, onError) {
+  return onSnapshot(doc(db, ACTIVE, email), (s) => {
+    if (!s.metadata.fromCache) meter.read("hallpass-own", 1);
+    onEntries(entriesOf(email, s.data()?.activeStudents));
+  }, onError);
+}
+
+/** Reviewers: one index document instead of one document per teacher. */
+export function watchBoard(onEntries, onError) {
+  return onSnapshot(IDX(), (s) => {
+    if (!s.metadata.fromCache) meter.read("hallpass-board", 1);
+    if (!s.exists()) { ensureIndex().catch((e) => console.warn("index seed", e.code)); onEntries([]); return; }
+    onEntries(Object.entries(s.data().students || {}).map(([adminNo, e]) => ({ adminNo, ...e })));
+  }, onError);
+}
+
+let seeded = false;
+/** One-time seed for existing data: reads every active document once (~60 reads), then never again. */
+export async function ensureIndex() {
+  if (seeded) return; seeded = true;
+  const snap = await getDocs(collection(db, ACTIVE));
+  meter.read("hallpass-seed", snap.size);
+  const students = {};
+  snap.forEach((d) => (d.data().activeStudents || []).forEach((e) => { students[e.adminNo] = { teacher: d.id, ...e }; }));
+  await setDoc(IDX(), { students, updatedAt: new Date() }, { merge: true });
 }
 
 /* ---------- history record ---------- */
@@ -86,12 +108,16 @@ export function signOutStudent({ teacherEmail, student, reason, note = "" }) {
   const ref = doc(db, ACTIVE, teacherEmail);
   const adminNo = String(student.adminNo);
   return runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
+    const [snap, idx] = await Promise.all([tx.get(ref), tx.get(IDX())]);
+    meter.read("hallpass-tx", 2);
     const list = snap.exists() ? snap.data().activeStudents || [] : [];
-    if (list.length >= MAX_OUT) {
-      throw new Error("Venue Limit Reached: Maximum of 2 students allowed out simultaneously. Please log a returning student first.");
-    }
+    if (list.length >= MAX_OUT) throw new Error("Venue Limit Reached: Maximum of 2 students allowed out simultaneously. Please log a returning student first.");
     if (list.some((e) => e.adminNo === adminNo)) throw new Error("That learner is already signed out by you.");
+
+    const other = idx.exists() ? idx.data().students?.[adminNo] : null;
+    if (other && other.teacher !== teacherEmail && dayKey(other.leaveTime.toDate()) === dayKey()) {
+      throw new Error(`${student.firstName} is already out (${other.teacher}).`);
+    }
     const entry = {
       adminNo,
       studentName: student.fullName || `${student.firstName} ${student.lastName}`.trim(),
@@ -103,6 +129,7 @@ export function signOutStudent({ teacherEmail, student, reason, note = "" }) {
       leaveTime: new Date(),
     };
     tx.set(ref, { teacherEmail, activeStudents: [...list, entry] });
+    tx.set(IDX(), { students: { [adminNo]: { teacher: teacherEmail, ...entry } }, updatedAt: new Date() }, { merge: true });
   });
 }
 
@@ -120,23 +147,31 @@ export function returnStudent({ teacherEmail, adminNo, returnedBy, forced = fals
       returnedOn: now, minutes, auto: false, signedOff: !forced, returnedBy,
     }));
     tx.set(ref, { teacherEmail, activeStudents: list.filter((x) => x !== e) });
+    tx.set(IDX(), { students: { [String(adminNo)]: deleteField() }, updatedAt: new Date() }, { merge: true });
   });
 }
 
 /** Lazy sweep (spec protocol C): closes passes left over from a previous day. No cron needed. */
-export async function sweepStale(rows) {
+export async function sweepStale(entries) {
   const today = dayKey();
   const isOld = (e) => dayKey(e.leaveTime.toDate()) < today;
-  for (const r of rows.filter((x) => (x.activeStudents || []).some(isOld))) {
-    const ref = doc(db, ACTIVE, r.email);
+  const by = new Map();
+  entries.filter(isOld).forEach((e) => by.set(e.teacher, [...(by.get(e.teacher) || []), e.adminNo]));
+  for (const [teacher, ids] of by) {
+    const ref = doc(db, ACTIVE, teacher);
     await runTransaction(db, async (tx) => {
       const list = (await tx.get(ref)).data()?.activeStudents || [];
       const old = list.filter(isOld);
-      if (!old.length) return;
-      old.forEach((e) => tx.set(doc(collection(db, HISTORY)), historyRecord(r.email, e, {
-        returnedOn: e.leaveTime.toDate(), minutes: null, auto: true, signedOff: false, returnedBy: "auto-sweep",
-      })));
-      tx.set(ref, { teacherEmail: r.email, activeStudents: list.filter((e) => !old.includes(e)) });
+      const patch = {};
+      old.forEach((e) => {
+        tx.set(doc(collection(db, HISTORY)), historyRecord(teacher, e, {
+          returnedOn: e.leaveTime.toDate(), minutes: null, auto: true, signedOff: false, returnedBy: "auto-sweep",
+        }));
+        patch[e.adminNo] = deleteField();
+      });
+      if (old.length) tx.set(ref, { teacherEmail: teacher, activeStudents: list.filter((e) => !old.includes(e)) });
+      else ids.forEach((id) => { patch[id] = deleteField(); });   // index had a phantom entry
+      tx.set(IDX(), { students: patch, updatedAt: new Date() }, { merge: true });
     });
   }
 }

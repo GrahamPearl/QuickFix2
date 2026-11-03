@@ -19,8 +19,16 @@ window.APP_CONFIG = {
   // Shown when a student has no photo on file, or the image 404s.
   FALLBACK_IMAGE: "assets/no-photo.svg",
 
-  TEAM_ROLES: ["Member", "Captain", "Vice-Captain", "Leadership", "Awarded KZN", "Awarded SA", "Enrichment"],
-
+  TEAM_ROLES: [
+    "Member",
+    "Captain",
+    "Vice-Captain",
+    "Leadership",
+    "Awarded KZN",
+    "Awarded SA",
+    "Enrichment",
+  ],
+  TEAMS_COLLECTION: "teams",
   // Firestore project config (safe to expose client-side; access is
   // controlled by Firestore Security Rules, not by hiding this).
   FIREBASE_CONFIG: {
@@ -42,4 +50,9 @@ window.APP_CONFIG = {
   CACHE_TTL_MS: 30 * 60 * 1000,
   ALLOCATION_BATCHES_COLLECTION: "allocation-batches",
   
+  SNAPSHOT_COLLECTION: "rosterSnapshot",
+  SNAPSHOT_SPLIT_GRADES: [], // e.g. [10, 11, 12] if a chunk nears 1 MiB (see the health tab)
+  AUDIT_COLLECTION: "audit-log",
+  USAGE_COLLECTION: "usage-daily",
+  USAGE_SUMMARY_COLLECTION: "usage-summary",
 };

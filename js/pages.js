@@ -18,6 +18,7 @@ export const PAGES = [
   { group: "Administration", label: "Allocate subjects", href: "allocate.html", perm: "bulkAllocate", desc: "Enrol whole classes in a subject." },
   { group: "Administration", label: "Import students", href: "admin_import.html", perm: "bulkImport", desc: "Update the roster from the class-list workbook." },
   { group: "Administration", label: "User access", href: "admin_users.html", perm: "manageUsers", desc: "Add staff and set their user type." },
+  { group: "Administration", label: "Audit & usage", href: "audit.html", perm: "viewAudit", desc: "Who changed what, read/write usage and snapshot health." },
 ];
 
 export const visiblePages = (cfg, type) => PAGES.filter((p) => can(cfg, type, p.perm));

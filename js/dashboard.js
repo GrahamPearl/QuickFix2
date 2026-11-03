@@ -6,7 +6,7 @@ import { auth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from ".
 import { loadUserTypes, resolveUserType, can, getTypeDef, typeKeys } from "./usertypes.js";
 import { visiblePages } from "./pages.js";
 import { loadNotices, postNotice, removeNotice, visibleNotices } from "./notices-service.js";
-import { getRosterSettings, requestRosterRefresh } from "./settings-service.js";
+import { getRosterSettings, requestRosterRefresh, estimateRefreshCost, DAILY_READ_QUOTA } from "./settings-service.js";
 import { rebuildIndex } from "./roster-index.js";
 import { escapeHtml as esc } from "./html.js";
 
@@ -24,6 +24,37 @@ const AUTH_ERRORS = {
   "auth/too-many-requests": "Too many failed attempts. Try again later.",
 };
 const authMsg = (t) => { $("authError").textContent = t; };
+
+$("rosterBtn").addEventListener("click", async () => {
+  if (!me || !can(cfg, me.type, "refreshRoster")) return;
+  const urgent = $("rosterUrgent").checked;
+  $("rosterBtn").disabled = true;
+  say("rosterMsg", "Estimating cost…", "");
+  try {
+    const { students, users, reads } = await estimateRefreshCost(cfg.collection);
+    const pct = Math.round((reads / DAILY_READ_QUOTA) * 100);
+    const detail = `${users} users × ${students} students ≈ ${reads.toLocaleString()} reads (about ${pct}% of the free daily quota of ${DAILY_READ_QUOTA.toLocaleString()}).`;
+
+    if (urgent && pct >= 50) {
+      const typed = prompt(`${detail}\n\nAn urgent refresh could use up today's quota and lock everyone out until the daily reset (about 10:00 SA time).\n\nType REFRESH to continue.`);
+      if ((typed || "").trim() !== "REFRESH") return say("rosterMsg", "Cancelled.", "");
+    } else {
+      const msg = urgent
+        ? `Urgent: every user reloads on their next search.\n\n${detail}\n\nContinue?`
+        : `Ask all users to refresh? Each reloads only when their copy is older than the minimum age.\nWorst case: ${detail}\n\nContinue?`;
+      if (!confirm(msg)) return say("rosterMsg", "Cancelled.", "");
+    }
+
+    await requestRosterRefresh({ user: me.user, urgent, reason: "manual" });
+    say("rosterMsg", "Refresh requested.", "ok");
+    await setupRoster();
+  } catch (err) {
+    say("rosterMsg", `Could not request refresh: ${err.message}`, "err");
+  } finally {
+    $("rosterBtn").disabled = false;
+  }
+});
+
 $("authForm").addEventListener("submit", async (e) => {
   e.preventDefault(); authMsg("");
   const email = $("authEmail").value.trim(), pw = $("authPassword").value;
@@ -156,15 +187,6 @@ async function setupRoster() {
       : " No roster index built yet: every user load reads every student.";
   } catch (err) { $("rosterInfo").textContent = `Could not read settings: ${err.message}`; }
 }
-$("rosterBtn").addEventListener("click", async () => {
-  if (!me || !can(cfg, me.type, "refreshRoster")) return;
-  const urgent = $("rosterUrgent").checked;
-  if (!confirm(urgent ? "Every user will reload all students on their next search. Continue?" : "Ask all users to refresh their student data?")) return;
-  $("rosterBtn").disabled = true;
-  try { await requestRosterRefresh({ user: me.user, urgent, reason: "manual" }); say("rosterMsg", "Refresh requested.", "ok"); await setupRoster(); }
-  catch (err) { say("rosterMsg", `Could not request refresh: ${err.message}`, "err"); }
-  finally { $("rosterBtn").disabled = false; }
-});
 
 $("indexBtn").addEventListener("click", async () => {
   if (!me || !can(cfg, me.type, "refreshRoster")) return;

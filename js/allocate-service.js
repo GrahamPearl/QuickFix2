@@ -21,10 +21,14 @@ import {
   arrayUnion,
   serverTimestamp,
 } from "./firebase-init.js";
+
 import { subjectKey } from "./edit-form.js";
 import { MAX_LINE, buildEnrollment } from "./allocate-form.js";
 
-const { STUDENTS_COLLECTION, ALLOCATION_BATCHES_COLLECTION = "allocation-batches" } = window.APP_CONFIG;
+const {
+  STUDENTS_COLLECTION,
+  ALLOCATION_BATCHES_COLLECTION = "allocation-batches",
+} = window.APP_CONFIG;
 const CHUNK = 400; // Firestore allows 500 writes per batch
 
 export async function getGradeLines(grade) {
@@ -47,13 +51,23 @@ export async function getGradeLines(grade) {
   }
 }
 
-const logRow = (r) => ({ adminNo: r.adminNo, name: r.name, class: r.class, status: r.status, reason: r.reason || "" });
+const logRow = (r) => ({
+  adminNo: r.adminNo,
+  name: r.name,
+  class: r.class,
+  status: r.status,
+  reason: r.reason || "",
+});
 
 /**
  * @param {{draft:Object, rows:Array, user:Object}} args  rows come from classifyStudents()
  * @returns {Promise<{logId:string, status:string, updated:Array, failed:Array, skipped:Array}>}
  */
-export async function applyAllocation({ draft, rows, user = auth.currentUser }) {
+export async function applyAllocation({
+  draft,
+  rows,
+  user = auth.currentUser,
+}) {
   const key = subjectKey(draft.subject);
   const subject = draft.subject.trim();
   const ready = rows.filter((r) => r.status === "ready");
@@ -72,47 +86,68 @@ export async function applyAllocation({ draft, rows, user = auth.currentUser }) 
     status: "started",
     startedAt: serverTimestamp(),
   });
+  // add to the existing allocate-form import
+  const toOp = (r) => {
+    const enrollment = buildEnrollment(draft, r.student);
+    return {
+      adminNo: r.adminNo,
+      before: r.student,
+      after: patchStudent(r.student, enrollment),
+      fields: {
+        [`enrollments.${key}`]: enrollment,
+        subjectsSummary: arrayUnion(subject),
+      },
+      row: r,
+    };
+  };
 
-  const payloadFor = (r) => ({
-    [`enrollments.${key}`]: buildEnrollment(draft, r.student),
-    subjectsSummary: arrayUnion(subject),
-    updatedBy: user?.email || "",
-    updatedAt: serverTimestamp(),
-  });
-
-  const updated = [];
-  const failed = [];
-  for (let i = 0; i < ready.length; i += CHUNK) {
-    const chunk = ready.slice(i, i + CHUNK);
-    try {
-      const batch = writeBatch(db);
-      chunk.forEach((r) => batch.update(doc(db, STUDENTS_COLLECTION, r.adminNo), payloadFor(r)));
-      await batch.commit(); // atomic: all of the chunk or none
-      updated.push(...chunk);
-    } catch (batchErr) {
-      // One bad document fails the whole chunk, so retry the chunk one by one (safe: nothing was applied).
-      for (const r of chunk) {
-        try {
-          await updateDoc(doc(db, STUDENTS_COLLECTION, r.adminNo), payloadFor(r));
-          updated.push(r);
-        } catch (err) {
-          failed.push({ ...r, status: "failed", reason: err.message || batchErr.message });
-        }
-      }
-    }
+  let updated = [],
+    failed = [];
+  try {
+    const res = await saveStudents(ready.map(toOp), {
+      action: "allocate",
+      source: "allocate-page",
+      note: `${subject} · ${draft.teacher.trim()} · line ${draft.line} · log ${logRef.id}`,
+    });
+    updated = res.updated.map((o) => o.row);
+    failed = res.failed.map((f) => ({
+      ...f.op.row,
+      status: "failed",
+      reason: f.error.message,
+    }));
+  } catch (err) {
+    failed = ready.map((r) => ({
+      ...r,
+      status: "failed",
+      reason: err.message,
+    }));
   }
 
-  const status = failed.length ? (updated.length ? "partial" : "failed") : "completed";
+  const status = failed.length
+    ? updated.length
+      ? "partial"
+      : "failed"
+    : "completed";
   try {
     await updateDoc(logRef, {
       status,
       finishedAt: serverTimestamp(),
-      counts: { updated: updated.length, skipped: skipped.length, failed: failed.length },
-      updated: updated.map((r) => ({ adminNo: r.adminNo, previous: r.previous || null })),
+      counts: {
+        updated: updated.length,
+        skipped: skipped.length,
+        failed: failed.length,
+      },
+      updated: updated.map((r) => ({
+        adminNo: r.adminNo,
+        previous: r.previous || null,
+      })),
       skipped: [...skipped, ...failed].map(logRow),
     });
   } catch (err) {
-    console.error("Allocation finished but the log could not be completed", err); // students are already saved
+    console.error(
+      "Allocation finished but the log could not be completed",
+      err,
+    ); // students are already saved
   }
 
   return { logId: logRef.id, status, updated, failed, skipped };

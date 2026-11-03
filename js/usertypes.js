@@ -22,9 +22,11 @@ export async function resolveUserType(user, cfg) {
     if (c && c.uid === user.uid && Date.now() - c.at < TYPE_TTL && cfg.types[c.type]) return c.type;
   } catch {}
 
-  const ids = [user.uid, (user.email || "").toLowerCase()].filter(Boolean);
-  const snaps = await Promise.all(ids.map((id) => getDoc(doc(db, cfg.collection, id)).catch(() => null)));
-  for (const snap of snaps) {
+  const ids = [(user.email || "").toLowerCase(), user.uid].filter(Boolean);   // email first
+  for (const id of ids) {
+    const snap = await getDoc(doc(db, cfg.collection, id)).catch(() => null);
+    meter.read("auth-user", 1)
+    
     if (!snap?.exists()) continue;
     const t = String(snap.data().type || "").toLowerCase();
     const key = Object.keys(cfg.types).find((k) => k.toLowerCase() === t);

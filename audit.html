@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Audit &amp; Usage</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/awards.css" />
+  <style>
+    .bar{height:10px;background:var(--line);border-radius:6px;overflow:hidden;min-width:120px}
+    .bar>i{display:block;height:100%;background:var(--gold)} .bar.hot>i{background:var(--maroon)}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px} @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+    td.num{text-align:right;font-variant-numeric:tabular-nums} .scroll{max-height:460px;overflow:auto}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin:8px 0}
+  </style>
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <div class="crest" aria-hidden="true">HHS</div>
+    <div><h1 class="site-title">Audit &amp; Usage</h1><p class="site-subtitle">WHO CHANGED WHAT · READS AND WRITES · SNAPSHOT HEALTH</p></div>
+    <div class="header-spacer"></div><a href="index.html" class="staff-link">&larr; Dashboard</a>
+  </div></header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+      <div class="tab-row">
+        <button class="tab is-active" data-tab="changes">Changes</button>
+        <button class="tab" data-tab="summary">Summary</button>
+        <button class="tab" data-tab="usage">Usage</button>
+        <button class="tab" data-tab="snapshot">Snapshot health</button>
+      </div>
+
+      <section class="panel" data-pane="changes">
+        <div class="row">
+          <div><label for="aFrom">From</label><input type="date" id="aFrom" /></div>
+          <div><label for="aTo">To</label><input type="date" id="aTo" /></div>
+          <button id="aLoad" class="btn btn-primary">Load (up to 300 reads)</button>
+          <button id="aMore" class="btn is-hidden">Load 300 more</button>
+          <button id="aCsv" class="btn btn-ghost">Download CSV</button>
+        </div>
+        <div class="row">
+          <div><label for="fUser">User</label><select id="fUser"></select></div>
+          <div><label for="fAction">Action</label><select id="fAction"></select></div>
+          <div><label for="fAdm">Admin no</label><input type="text" id="fAdm" maxlength="6" /></div>
+        </div>
+        <p id="aMsg" class="plan-msg"></p>
+        <div class="table-wrap scroll"><table><thead><tr><th>When</th><th>User</th><th>Action</th><th>Source</th><th>Count</th><th>Details</th></tr></thead><tbody id="aBody"></tbody></table></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="summary">
+        <p class="empty-hint">Calculated from the rows loaded on the Changes tab (no extra reads).</p>
+        <div class="grid2">
+          <div><h3 class="pool-title">By action</h3><div id="sAction"></div></div>
+          <div><h3 class="pool-title">By user</h3><div id="sUser"></div></div>
+          <div><h3 class="pool-title">By day</h3><div id="sDay"></div></div>
+          <div><h3 class="pool-title">Fields changed most</h3><div id="sField"></div></div>
+        </div>
+        <h3 class="pool-title">Learners with 3 or more changes in this period</h3><div id="sRepeat"></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="usage">
+        <div class="row">
+          <div><label for="uDay">Day</label><input type="date" id="uDay" /></div>
+          <button id="uLoad" class="btn btn-primary">Load day (≈ users + 1 reads)</button>
+          <button id="uTrend" class="btn">14-day trend (14 reads)</button>
+        </div>
+        <p class="empty-hint">Client-reported counts (a few per cent low). The Firebase Console → Firestore → Usage tab is the source of truth. Quota resets about 10:00 SA time.</p>
+        <div id="uGauge"></div><div id="uTrendOut"></div>
+        <div class="table-wrap scroll"><table><thead><tr><th>User</th><th>Reads</th><th>Top read sources</th><th>Writes</th><th>Cache hit</th><th>Avg roster load</th><th>Errors</th></tr></thead><tbody id="uBody"></tbody></table></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="snapshot">
+        <div class="row"><button id="sCheck" class="btn btn-primary">Check integrity</button><button id="sPublish" class="btn is-hidden">Publish snapshot</button></div>
+        <p id="sMsg" class="plan-msg"></p><div id="sOut"></div>
+      </section>
+    </div>
+  </main>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/audit-app.js"></script>
+</body>
+</html>

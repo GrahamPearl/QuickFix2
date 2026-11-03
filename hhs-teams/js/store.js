@@ -4,7 +4,7 @@ import { CONFIG } from "./config.js";
 import { DEFAULT_TEAMS } from "./data/default-teams.js";
 import * as fs from "./firestore.js";
 import { setSync, showUnsaved, splitKey, toast } from "./utils.js";
-import { getAllStudents } from "../../js/data-service.js";
+import { getAllStudents, clearTeamsListCache } from "../../js/data-service.js";
 
 export const bus = new EventTarget();
 export const state = {
@@ -48,7 +48,8 @@ export async function loadMeta() {
   if (remote?.activities) state.meta = { hidden: [], ...remote };
   else metaFromTeams();
 }
-export const persistMeta = () => fs.setMeta(state.meta);
+
+export const persistMeta = () => { clearTeamsListCache(); return fs.setMeta(state.meta); };
 
 export async function selectTeam(key) {
   state.key = key;

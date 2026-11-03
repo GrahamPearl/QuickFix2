@@ -2,78 +2,122 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // The user's type comes from authorized_users (doc id = uid or lower-cased email). Values must equal
-    // the keys in json/usertypes.json exactly (e.g. 'staff-head', not 'staffhead').
-    function userDoc(id) { return /databases/$(database)/documents/authorized_users/$(id); }
+    // ---------- helpers ----------
+    function userDoc(id) {
+      return /databases/$(database)/documents/authorized_users/$(id);
+    }
+    function myEmail() { return request.auth.token.email.lower(); }
+
+    // Type of the signed-in user. Email document first (that is how admin_user.js keys them),
+    // uid document as a fallback. null if not listed.
     function myType() {
       return request.auth == null ? null :
-        (exists(userDoc(request.auth.uid))
-          ? get(userDoc(request.auth.uid)).data.type
-          : (request.auth.token.email != null && exists(userDoc(request.auth.token.email.lower()))
-              ? get(userDoc(request.auth.token.email.lower())).data.type : null));
+        ((request.auth.token.email != null && exists(userDoc(myEmail())))
+          ? get(userDoc(myEmail())).data.type.lower()
+          : (exists(userDoc(request.auth.uid))
+              ? get(userDoc(request.auth.uid)).data.type.lower()
+              : null));
     }
+    function typeIn(list) { let t = myType(); return t != null && t in list; }
 
-    function canRead()      { return myType() in ['admin', 'staff-head', 'staff-gc', 'staff-office', 'staff', 'slt']; }
-    function canEdit()      { return myType() in ['admin', 'staff-head', 'staff-gc']; }   // "edit" permission
-    function isAdminOrHead(){ return myType() in ['admin', 'staff-head']; }
-    function isAdmin()      { return myType() == 'admin'; }
-    function reviewer()     { return myType() in ['admin', 'staff-head', 'staff-gc']; }   // hallPassReview
-    function hallStaff()    { return myType() in ['admin', 'staff-head', 'staff-gc', 'staff']; } // hallPass
+    function canRead()          { return typeIn(['admin','staff-head','staff-gc','staff-office','staff','slt']); }
+    function isAdmin()          { return typeIn(['admin']); }
+    function isAdminOrHead()    { return typeIn(['admin','staff-head']); }
+    function canEditStudents()  { return typeIn(['admin','staff-head','staff-gc']); }  // permission "edit"
+    function canEditTeams()     { return typeIn(['admin','staff-head','staff-gc']); }  // permission "editTeams"
+    function isHallStaff()      { return typeIn(['admin','staff-head','staff-gc','staff']); }  // "hallPass"
+    function isHallReviewer()   { return typeIn(['admin','staff-head','staff-gc']); }  // "hallPassReview"
 
+    // ---------- users ----------
     match /authorized_users/{id} {
-      allow read: if request.auth != null;
+      allow get:   if request.auth != null && request.auth.token.email != null
+                      && (id == request.auth.uid || id == myEmail() || isAdminOrHead());
+      allow list:  if isAdminOrHead();
       allow write: if isAdminOrHead();
     }
 
+    // ---------- students ----------
     match /students/{adminNo} {
-      allow read:  if canRead();
-      allow write: if canEdit();
+      allow read:           if canRead();
+      allow create, update: if canEditStudents();   // bulk update / allocate / import are gated in the UI only
+      allow delete:         if isAdmin();           // import "leavers"
     }
 
-    // Compact roster copy (see js/roster-index.js). Anyone who can read students may read it;
-    // anyone who can edit students may keep it in step.
-    match /rosterIndex/{id} {
-      allow read:  if canRead();
-      allow write: if canEdit();
-    }
-
-    // Shared settings: admins/heads may change anything; editors may only touch the roster-index bookkeeping fields.
-    match /setting/{id} {
-      allow read:   if canRead();
-      allow create, delete: if isAdminOrHead();
-      allow update: if isAdminOrHead() ||
-        (canEdit() && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['forceRefreshAt', 'indexChunks', 'indexCount', 'indexUpdatedAt']));
-    }
-
+    // ---------- teams (activities, _metadata) ----------
     match /teams/{id} {
       allow read:  if canRead();
-      allow write: if myType() in ['admin', 'staff-head', 'staff-gc'];   // editTeams
+      allow write: if canEditTeams();
+    }
+    // Word template (see optional step in section 4)
+    match /config/{id} {
+      allow read, write: if isAdminOrHead();
     }
 
-    match /timetables/{id} {
+    // ---------- shared settings, notices, timetables ----------
+    match /setting/{id} {
       allow read:  if canRead();
-      allow write: if isAdminOrHead();                                   // editTimetable
+      allow write: if isAdminOrHead();              // "refreshRoster"
     }
-
-    match /active-hall-passes/{email} {
-      allow read:  if hallStaff();
-      allow write: if hallStaff() && (request.auth.token.email.lower() == email || reviewer());
-    }
-    match /history-hall-pass/{id} {
-      allow create: if hallStaff();
-      allow read:   if reviewer();
-      allow update, delete: if false;   // immutable ledger
-    }
-
     match /notices/{id} {
       allow read:  if myType() != null;
-      allow write: if isAdminOrHead();   // postNotices
+      allow write: if isAdminOrHead();              // "postNotices"
+    }
+    match /timetables/{id} {
+      allow read:  if canRead();
+      allow write: if isAdminOrHead();              // "editTimetable"
     }
 
-    match /seatingPlans/{id}       { allow read, write: if canRead(); }
-    match /lsuSeatingVenues/{id}   { allow read: if canRead(); allow write: if canEdit(); }
-    match /allocation-batches/{id} { allow read: if isAdmin(); allow create, update: if isAdmin(); }   // bulkAllocate
-    match /import-batches/{id}     { allow read: if isAdmin(); allow create: if isAdmin(); }            // bulkImport
+    // ---------- hall passes ----------
+    match /active-hall-passes/{email} {
+      allow read:  if isHallStaff();
+      allow write: if isHallStaff() && (email == myEmail() || isHallReviewer());
+    }
+    match /history-hall-pass/{id} {
+      allow create: if isHallStaff();
+      allow read:   if isHallReviewer();
+      allow update, delete: if false;               // immutable ledger
+    }
+
+    // ---------- seating ----------
+    match /seatingPlans/{id} {                      // seating-teacher.js: any user who can view may save
+      allow read, write: if canRead();
+    }
+    match /lsuSeatingVenues/{id} {                  // seating-lsu.js: saving needs "edit"
+      allow read:  if canRead();
+      allow write: if canEditStudents();
+    }
+
+    // ---------- admin logs ----------
+    match /allocation-batches/{id} { allow read, write: if isAdmin(); }
+    match /import-batches/{id}     { allow read, write: if isAdmin(); }
+
+    match /rosterSnapshot/{id} {
+  allow read:  if canRead();
+  allow write: if canEditStudents();            // patched by every student write; publish is gated in the UI
+}
+match /audit-log/{id} {
+  allow create: if canEditStudents() && request.resource.data.by == request.auth.uid;
+  allow read:   if isAdminOrHead();
+  allow update, delete: if false;               // immutable
+}
+match /usage-daily/{id} {
+  allow create, update: if canRead() && request.resource.data.uid == request.auth.uid
+                        && id.matches('.*_' + request.auth.uid);
+  allow read: if isAdminOrHead();
+}
+match /usage-summary/{id} {
+  allow create, update: if canRead();
+  allow read: if isAdminOrHead();
+}
+match /active-hall-passes/{email} {
+  allow read:  if isHallStaff() && (email == myEmail() || isHallReviewer());
+  allow write: if isHallStaff() && (email == myEmail() || isHallReviewer());
+}
+match /hallpass-index/{id} {
+  allow read, write: if isHallStaff();          // transactions need read access; UI shows the board to reviewers only
+}
+
+    // awards-recommendations: intentionally NOT listed (default deny)
+    // until the approver policy is decided (see teams-and-awards-plan.md).
   }
 }

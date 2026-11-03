@@ -12,21 +12,16 @@ import {
   getDoc,
   OAuthProvider,
   signInWithPopup,
-  runTransaction,
-  serverTimestamp,
 } from "./firebase-init.js";
 
-import {
-  getAllStudents,
-  collectSubjects,
-  collectClasses,
-  patchCachedStudent,
-  clearRosterCache,
-  ensureFreshRoster,
-  addCachedStudent,
-} from "./data-service.js";
+import { saveStudents, createStudent } from "./student-write-service.js";
+
+import { subjectKey, validateDraft } from "./edit-form.js";
+
+import { patchCachedStudents } from "./data-service.js";
 
 import { filterStudents, sortStudents } from "./search.js";
+
 import {
   initTimetableModule,
   openStudentTimetableModal,
@@ -55,7 +50,6 @@ import {
   resolveUserType,
 } from "./usertypes.js";
 
-import { validateDraft } from "./edit-form.js"; // NEW
 import { escapeHtml } from "./html.js";
 
 const els = {
@@ -181,7 +175,7 @@ function showLoginRequired() {
 function clearRoster() {
   roster = [];
   allAvailableTeams = [];
-  clearRosterCache();
+  releaseRosterMemory(); // was clearRosterCache()
   els.tbody.innerHTML = "";
   els.resultsGrid.innerHTML = "";
 }
@@ -366,32 +360,16 @@ function runSearch() {
   }
 }
 
-async function loadAvailableTeams() {
+async function loadAvailableTeams({ forceRefresh = false } = {}) {
   try {
-    const [snap, metaSnap] = await Promise.all([
-      getDocs(collection(db, "teams")),
-      getDoc(doc(db, "teams", "_metadata")),
-    ]);
-    const hidden = new Set(
-      metaSnap.exists() ? metaSnap.data().hidden || [] : [],
-    );
-    allAvailableTeams = snap.docs
-      .filter((d) => !d.id.startsWith("_") && !d.id.includes("||"))
-      .map((d) => {
-        const x = d.data();
-        return {
-          id: d.id,
-          teamName: x.teamName || d.id,
-          ageGroups: Object.fromEntries(
-            Object.keys(x.ageGroups || {}).map((g) => [g, true]),
-          ),
-        };
-      })
-      .filter((t) => !hidden.has(t.teamName))
+    const { teams, hidden } = await getTeamsList({ forceRefresh });
+    const hide = new Set(hidden);
+    allAvailableTeams = teams
+      .filter((t) => !hide.has(t.teamName))
       .sort((a, b) => a.teamName.localeCompare(b.teamName));
     populateTeamFilterOptions();
   } catch (err) {
-    console.error("Failed to load teams list from Firestore:", err);
+    console.error("Failed to load teams list:", err);
   }
 }
 
@@ -748,7 +726,7 @@ async function wireEvents() {
       const student = roster.find((s) => String(s.adminNo) === String(adminNo));
       if (!student) return;
 
-      currentEditingStudent = { ...student };
+      currentEditingStudent = structuredClone(student); // deep copy: Cancel no longer leaks changes into the roster
 
       const allSubjects = collectSubjects(roster);
       const teacherMap = getTeachersPerSubjectMap();
@@ -825,59 +803,94 @@ async function wireEvents() {
 
   // Drawer Form Edit Submission
   els.drawerContent.addEventListener("submit", async (e) => {
-    if (e.target.id === "editForm") {
-      e.preventDefault();
+    if (e.target.id !== "editForm") return;
+    e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized: You must be signed in as staff to edit students.");
+      return;
+    }
 
-      if (!isAdmin) {
-        alert("Unauthorized: You must be signed in as staff to edit students.");
-        return;
-      }
+    const errorEl = document.getElementById("editError");
 
-      const inputs = els.drawerContent.querySelectorAll("[data-field]");
-      inputs.forEach((input) => {
-        const field = input.getAttribute("data-field");
-        currentEditingStudent[field] = input.value;
+    const adminNo = String(currentEditingStudent.adminNo).trim();
+    const before = roster.find((s) => String(s.adminNo) === adminNo);
+    if (!before) return;
+
+    const after = structuredClone(currentEditingStudent);
+    els.drawerContent.querySelectorAll("[data-field]").forEach((i) => {
+      after[i.dataset.field] =
+        i.dataset.field === "grade" ? Number(i.value) : i.value.trim();
+    });
+    after.enrollments ||= {};
+    (after.subjectsSummary || []).forEach((name) => {
+      // keep subject inside each enrollment (plan item 12)
+      const k = subjectKey(name);
+      after.enrollments[k] = { ...(after.enrollments[k] || {}), subject: name };
+    });
+    els.drawerContent
+      .querySelectorAll(".edit-teacher-select")
+      .forEach((sel) => {
+        const en = after.enrollments[sel.dataset.subjectKey];
+        if (en) en.teacher = sel.value;
       });
+    els.drawerContent.querySelectorAll(".edit-line-input").forEach((inp) => {
+      const en = after.enrollments[inp.dataset.subjectKey];
+      if (en) en.line = inp.value === "" ? "" : Number(inp.value);
+    });
 
-      const adminNo = String(currentEditingStudent.adminNo).trim();
+    const problems = validateDraft(after);
+    if (problems.length) {
+      errorEl.textContent = problems.join(" · ");
+      return;
+    }
 
-      if (!adminNo) {
-        alert("Error: Student has no Admin Number. Cannot save to database.");
-        return;
-      }
+    after.registrationClass = after.class; // assumption until plan item 13 picks one field
+    after.fullName = `${after.firstName} ${after.lastName}`.trim();
+    const low = (v) =>
+      String(v || "")
+        .trim()
+        .toLowerCase();
+    after.searchTokens = [
+      ...new Set([
+        adminNo,
+        low(after.firstName),
+        low(after.lastName),
+        `${low(after.firstName)} ${low(after.lastName)}`.trim(),
+      ]),
+    ];
 
-      try {
-        const studentRef = doc(db, "students", adminNo);
+    const fields = Object.fromEntries(
+      [
+        "firstName",
+        "lastName",
+        "fullName",
+        "grade",
+        "class",
+        "registrationClass",
+        "gender",
+        "subjectsSummary",
+        "enrollments",
+        "searchTokens",
+      ].map((k) => [k, after[k]]),
+    );
 
-        await updateDoc(studentRef, {
-          firstName: currentEditingStudent.firstName || "",
-          lastName: currentEditingStudent.lastName || "",
-          fullName: currentEditingStudent.fullName || "",
-          grade: currentEditingStudent.grade,
-          registrationClass: currentEditingStudent.registrationClass,
-          gender: currentEditingStudent.gender,
-          enrollments: currentEditingStudent.enrollments || {},
-        });
-
-        const index = roster.findIndex((s) => String(s.adminNo) === adminNo);
-        if (index !== -1) {
-          roster[index] = currentEditingStudent;
-          patchCachedStudent(currentEditingStudent);
-        }
-
-        els.drawerContent.innerHTML = renderDrawerView(
-          currentEditingStudent,
-          isAdmin,
-        );
-        runSearch();
-
-        console.log(`Student ${adminNo} successfully updated in Firestore!`);
-      } catch (err) {
-        console.error("Failed to update student in Firestore:", err);
-        alert(
-          "Failed to save changes to the database. Check console for details.",
-        );
-      }
+    const btn = e.target.querySelector('[type="submit"]');
+    btn.disabled = true;
+    errorEl.textContent = "";
+    try {
+      await saveStudents([{ adminNo, before, after, fields }], {
+        action: "student.update",
+        source: "drawer-edit",
+      });
+      roster[roster.findIndex((s) => String(s.adminNo) === adminNo)] = after;
+      patchCachedStudent(after);
+      els.drawerContent.innerHTML = renderDrawerView(after, isAdmin);
+      runSearch();
+    } catch (err) {
+      console.error("Failed to update student:", err);
+      errorEl.textContent = `Could not save: ${err.message}`;
+    } finally {
+      btn.disabled = false;
     }
   });
 
@@ -971,29 +984,18 @@ async function wireEvents() {
       });
 
       try {
-        const studentRef = doc(
-          db,
-          "students",
-          String(currentTeamsStudentAdminNo),
+        const adminNo = String(currentTeamsStudentAdminNo);
+        const before = roster.find((s) => String(s.adminNo) === adminNo);
+        if (!before) throw new Error("Student not found in the roster.");
+        const after = { ...before, teams: updatedTeams };
+        await saveStudents(
+          [{ adminNo, before, after, fields: { teams: updatedTeams } }],
+          { action: "teams.student-modal", source: "drawer-teams" },
         );
-
-        await updateDoc(studentRef, {
-          teams: updatedTeams,
-        });
-
-        const index = roster.findIndex(
-          (s) => String(s.adminNo) === String(currentTeamsStudentAdminNo),
-        );
-        if (index !== -1) {
-          roster[index].teams = updatedTeams;
-          patchCachedStudent(roster[index]);
-        }
-
+        roster[roster.indexOf(before)] = after;
+        patchCachedStudent(after);
         closeStudentTeamsModal();
         runSearch();
-        console.log(
-          `Teams updated successfully for student ${currentTeamsStudentAdminNo}`,
-        );
       } catch (err) {
         console.error("Failed to update student teams:", err);
         const errorEl = document.getElementById("teamsModalError");
@@ -1035,251 +1037,45 @@ document.addEventListener("submit", async (e) => {
     const subjectScope = document.getElementById("bulkSubjectScope")?.value;
     const errorEl = document.getElementById("bulkUpdateError");
 
-    const updatesToCommit = [];
+    //** ADD CODE HERE */
+    const keyOf = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const ops = [];
+roster.forEach((student) => {
+  const after = structuredClone(student);          // the live roster is untouched until the commit succeeds
+  let fields = null;
+  const subKey = subjectScope ? keyOf(subjectScope) : "";
+  const enr = subKey ? after.enrollments?.[subKey] : null;
 
-    roster.forEach((student) => {
-      let isUpdated = false;
-
-      if (targetField === "registrationClass") {
-        if (
-          String(student.registrationClass || "")
-            .trim()
-            .toLowerCase() === matchVal
-        ) {
-          student.registrationClass = newVal;
-          isUpdated = true;
-        }
-      } else if (targetField === "grade") {
-        if (
-          String(student.grade || "")
-            .trim()
-            .toLowerCase() === matchVal
-        ) {
-          const parsedVal = isNaN(newVal) ? newVal : Number(newVal);
-          student.grade = parsedVal;
-          isUpdated = true;
-        }
-      } else if (targetField === "subjectTeacher" && subjectScope) {
-        const subKey = subjectScope.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const enr = student.enrollments?.[subKey];
-
-        if (enr) {
-          if (
-            String(enr.teacher || "")
-              .trim()
-              .toLowerCase() === matchVal
-          ) {
-            enr.teacher = newVal;
-            isUpdated = true;
-          }
-        }
-      } else if (targetField === "subjectLine" && subjectScope) {
-        const subKey = subjectScope.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const enr = student.enrollments?.[subKey];
-
-        if (enr) {
-          enr.line = isNaN(newVal) ? newVal : Number(newVal);
-          isUpdated = true;
-        }
-      }
-
-      if (isUpdated) {
-        const adminNo = String(student.adminNo).trim();
-        const studentRef = doc(db, "students", adminNo);
-
-        const payload = {};
-        if (targetField === "registrationClass")
-          payload.registrationClass = student.registrationClass;
-        if (targetField === "grade") payload.grade = student.grade;
-        if (targetField === "subjectTeacher" || targetField === "subjectLine") {
-          payload.enrollments = student.enrollments;
-        }
-
-        updatesToCommit.push({ ref: studentRef, payload });
-      }
-    });
-
-    if (updatesToCommit.length === 0) {
-      errorEl.textContent =
-        "No student records matched your filter criteria. Verify current value.";
-      return;
-    }
-
-    try {
-      const BATCH_SIZE = 500;
-      for (let i = 0; i < updatesToCommit.length; i += BATCH_SIZE) {
-        const chunk = updatesToCommit.slice(i, i + BATCH_SIZE);
-        const batch = writeBatch(db);
-        chunk.forEach(({ ref, payload }) => batch.update(ref, payload));
-        await batch.commit();
-      }
-
-      alert(
-        `Bulk update successful! Updated ${updatesToCommit.length} student record(s) in Firestore.`,
-      );
-      document.getElementById("bulkModalWrapper")?.remove();
-      runSearch();
-    } catch (err) {
-      console.error("Error committing bulk update to Firestore:", err);
-      errorEl.textContent = `Failed to save updates to database: ${err.message}`;
-    }
-
-    await loadRoster({ forceRefresh: false });
+  if (targetField === "registrationClass" && String(after.registrationClass || "").trim().toLowerCase() === matchVal) {
+    after.registrationClass = newVal; fields = { registrationClass: newVal };
+  } else if (targetField === "grade" && String(after.grade ?? "").trim().toLowerCase() === matchVal) {
+    after.grade = isNaN(newVal) ? newVal : Number(newVal); fields = { grade: after.grade };
+  } else if (targetField === "subjectTeacher" && enr && String(enr.teacher || "").trim().toLowerCase() === matchVal) {
+    enr.teacher = newVal;
+    fields = { [`enrollments.${subKey}.teacher`]: newVal };
+  } else if (targetField === "subjectLine" && enr) {
+    enr.line = isNaN(newVal) ? newVal : Number(newVal); fields = { [`enrollments.${subKey}.line`]: enr.line };
   }
+  if (fields) ops.push({ adminNo: String(student.adminNo).trim(), before: student, after, fields });
 });
 
-document.addEventListener("change", (e) => {
-  if (e.target.id === "bulkTargetField") {
-    const val = e.target.value;
-    const contextContainer = document.getElementById("bulkContextContainer");
+if (!ops.length) { errorEl.textContent = "No student records matched your filter criteria. Verify current value."; return; }
+if (!confirm(`${ops.length} student record(s) will be changed. Continue?`)) return;
 
-    if (val === "subjectTeacher" || val === "subjectLine") {
-      const subjects = collectSubjects(roster);
-      contextContainer.innerHTML = `
-        <label for="bulkSubjectScope"><strong>Target Subject Scope</strong></label>
-        <select id="bulkSubjectScope" class="form-control" style="width: 100%; margin-top: 4px;" required>
-          <option value="">Select subject...</option>
-          ${subjects.map((s) => `<option value="${s}">${s}</option>`).join("")}
-        </select>
-      `;
-    } else {
-      contextContainer.innerHTML = "";
-    }
-  }
-});
-
-document.addEventListener("click", (e) => {
-  if (e.target.id === "closeBulkModalBtn") {
-    document.getElementById("bulkModalWrapper")?.remove();
-  }
-});
-
-// Add Student Handlers
-els.addStudentModalBtn.addEventListener("click", () => {
-  if (!isAdmin) return;
-
-  newStudentDraft = { subjectsSummary: [], enrollments: {} };
-  els.drawerHeader.innerHTML = `<div><h2 class="drawer-name">Register New Student</h2></div>`;
-  els.drawerContent.innerHTML = renderAddStudentForm(
-    1,
-    "",
-    newStudentDraft,
-    collectSubjects(roster),
-  );
-
-  els.drawer.classList.add("is-open");
-  els.scrim.classList.add("is-visible");
-  document.body.classList.add("no-scroll");
-});
-
-els.drawerContent.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  if (e.target.id === "addStudentStep1Form") {
-    const errorEl = document.getElementById("step1Error");
-    const raw = document.getElementById("newAdminNo").value.trim();
-    if (!raw) {
-      errorEl.textContent = "Admin Number cannot be empty.";
-      return;
-    }
-
-    const adminNoInput = raw.padStart(5, "0");
-    if (!/^\d{5}$/.test(adminNoInput)) {
-      errorEl.textContent = "Admin Number must be 5 digits.";
-      return;
-    }
-    if (roster.some((s) => String(s.adminNo) === adminNoInput)) {
-      errorEl.textContent = `A student with Admin Number "${adminNoInput}" already exists.`;
-      return;
-    }
-
-    newStudentDraft.adminNo = adminNoInput;
-    els.drawerContent.innerHTML = renderAddStudentForm(
-      2,
-      adminNoInput,
-      newStudentDraft,
-      collectSubjects(roster),
-    );
-    return;
-  }
-
-  if (e.target.id === "addStudentStep2Form") {
-    const errorEl = document.getElementById("step2Error");
-    els.drawerContent.querySelectorAll("[data-field]").forEach((i) => {
-      newStudentDraft[i.dataset.field] = i.value;
-    });
-
-    const problems = validateDraft(newStudentDraft);
-    if (problems.length) {
-      errorEl.textContent = problems.join(" · ");
-      return;
-    }
-
-    const low = (v) =>
-      String(v || "")
-        .trim()
-        .toLowerCase();
-    const adminNo = String(newStudentDraft.adminNo).trim().padStart(5, "0");
-    const first = newStudentDraft.firstName.trim();
-    const last = newStudentDraft.lastName.trim();
-    const cls = newStudentDraft.class.trim();
-
-    const rec = {
-      id: adminNo,
-      adminNo,
-      firstName: first,
-      lastName: last,
-      fullName: `${first} ${last}`.trim(),
-      grade: Number(newStudentDraft.grade),
-      class: cls,
-      registrationClass: cls,
-      gender: newStudentDraft.gender,
-      birthdate: newStudentDraft.birthdate || "",
-      agegroup: "",
-      photo: `${adminNo}.webp`,
-      searchTokens: [
-        ...new Set([
-          adminNo,
-          low(first),
-          low(last),
-          `${low(first)} ${low(last)}`.trim(),
-        ]),
-      ],
-      subjectsSummary: newStudentDraft.subjectsSummary || [],
-      enrollments: newStudentDraft.enrollments || {},
-      teams: [],
-      academic: { candidateNo: null, examNo: null },
-      flags: { concession: false },
-    };
-
-    const btn = e.target.querySelector('[type="submit"]');
-    btn.disabled = true;
-    errorEl.textContent = "";
-    try {
-      const ref = doc(db, "students", adminNo);
-      await runTransaction(db, async (tx) => {
-        // awaited now
-        if ((await tx.get(ref)).exists())
-          throw new Error(`Student ${adminNo} already exists.`);
-        tx.set(ref, {
-          ...rec,
-          createdBy: currentUser.email,
-          createdAt: serverTimestamp(),
-          updatedBy: currentUser.email,
-          updatedAt: serverTimestamp(),
-        });
-      });
-      roster.unshift(rec); // local copy has no server-timestamp sentinels
-      addCachedStudent(rec);
-      closeDrawer();
-      runSearch();
-    } catch (err) {
-      errorEl.textContent = `Could not save: ${err.message}`;
-    } finally {
-      btn.disabled = false;
-    }
-  }
-});
+try {
+  const { updated, failed } = await saveStudents(ops, {
+    action: "bulk.update", source: "bulk-modal", note: `${targetField}: "${matchVal}" → "${newVal}"`,
+  });
+  const done = new Map(updated.map((o) => [String(o.adminNo), o.after]));
+  roster = roster.map((s) => done.get(String(s.adminNo)) || s);
+  patchCachedStudents([...done.values()]);
+  alert(`Bulk update: ${updated.length} saved${failed.length ? `, ${failed.length} FAILED (${failed.map((f) => f.op.adminNo).join(", ")})` : ""}.`);
+  document.getElementById("bulkModalWrapper")?.remove();
+  runSearch();
+} catch (err) {
+  console.error("Bulk update failed:", err);
+  errorEl.textContent = `Failed to save updates to database: ${err.message}`;
+}
 
 els.drawerContent.addEventListener("click", (e) => {
   if (e.target.id === "cancelAddBtn") {

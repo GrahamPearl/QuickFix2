@@ -2,6 +2,7 @@
 import { db, collection, doc, getDoc, getDocs, setDoc, deleteDoc, updateDoc } from "../../js/firebase-init.js";
 import { CONFIG } from "./config.js";
 import { docId, setSync, splitKey } from "./utils.js";
+import { getTeamsList } from "../../js/data-service.js";
 
 export const online = () => true;
 export const init = () => setSync("idle");
@@ -17,17 +18,12 @@ const toArr = ({ members, roles }) => members.map((adminNo) => ({ adminNo, role:
 
 /** Activities, age groups (from the team docs) and the hidden list (from _metadata). */
 export const getMeta = () => safe(async () => {
-  const [snap, metaSnap] = await Promise.all([getDocs(collection(db, CONFIG.COLLECTION)), getDoc(ref(CONFIG.META_DOC))]);
-  const meta = { activities: [], ageGroups: {}, hidden: metaSnap.exists() ? metaSnap.data().hidden || [] : [] };
-  snap.forEach((d) => {
-    if (!isTeamDoc(d.id)) return;
-    const x = d.data(), act = x.teamName || d.id;
-    meta.activities.push(act);
-    meta.ageGroups[act] = Object.keys(x.ageGroups || {});
-  });
-  meta.activities.sort((a, b) => a.localeCompare(b));
-  return meta;
+  const { teams, hidden } = await getTeamsList();
+  const activities = teams.map((t) => t.teamName).sort((a, b) => a.localeCompare(b));
+  const ageGroups = Object.fromEntries(teams.map((t) => [t.teamName, Object.keys(t.ageGroups)]));
+  return { activities, ageGroups, hidden };     // hidden activities included: the admin page needs them
 });
+
 export const setMeta = (meta) => safe(() => setDoc(ref(CONFIG.META_DOC), { hidden: meta.hidden || [] }, { merge: true }));
 
 export const getTeam = (key) => safe(async () => {
@@ -59,14 +55,21 @@ export const getTemplate = async () => (await safe(async () => { const d = await
 export const setTemplate = (b64) =>
   safe(() => setDoc(ref(CONFIG.TEMPLATE_DOC), { templateBase64: b64, updatedAt: new Date().toISOString() }));
 
-/** Keeps students/{adminNo}.teams in step with team rosters. role=null removes the entry. */
+import { saveStudents } from "../../js/student-write-service.js";
+import { patchCachedStudent } from "../../js/data-service.js";
+
 export async function syncStudentTeam(adminNo, key, role) {
   const [teamName, ageGroup] = splitKey(key);
-  const sref = doc(db, "students", String(adminNo));
+  const id = String(adminNo);
   try {
-    const snap = await getDoc(sref);
+    const snap = await getDoc(doc(db, "students", id));      // fresh read so the teams array is never stale
     if (!snap.exists()) return;
-    const rest = (snap.data().teams || []).filter((t) => !(t.teamName === teamName && t.ageGroup === ageGroup));
-    await updateDoc(sref, { teams: role ? [...rest, { teamName, ageGroup, role: role }] : rest });
+    const before = { ...snap.data(), adminNo: id };
+    const rest = (before.teams || []).filter((t) => !(t.teamName === teamName && t.ageGroup === ageGroup));
+    const teams = role ? [...rest, { teamName, ageGroup, role }] : rest;
+    const after = { ...before, teams };
+    await saveStudents([{ adminNo: id, before, after, fields: { teams } }],
+      { action: "teams.member", source: "hhs-teams", note: `${key} → ${role || "removed"}` });
+    patchCachedStudent(after);
   } catch (e) { console.warn("syncStudentTeam", adminNo, e); }
 }

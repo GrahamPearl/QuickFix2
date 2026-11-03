@@ -5,12 +5,12 @@
     "admin": {
       "label": "Admin", "level": 0,
       "description": "Full access: edit students, bulk tools, teams, notices and user access.",
-      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "bulkAllocate": true, "bulkImport": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true }
+      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "bulkAllocate": true, "bulkImport": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true, "viewAudit": true, "publishSnapshot": true }
     },
     "staff-head": {
       "label": "Head Staff", "level": 0,
       "description": "Edit students, manage teams and users, post notices.",
-      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true }
+      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true, "viewAudit": true }
     },
     "staff-gc": {
       "label": "Staff - Grade Controller", "level": 0,

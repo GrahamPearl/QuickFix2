@@ -23,6 +23,8 @@ import {
   query,
   where,
   arrayUnion,
+  getCountFromServer,
+  deleteField, increment, FieldPath, orderBy, limit, startAfter, getCountFromServer
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 import {
@@ -59,4 +61,12 @@ export {
   updateDoc,
   OAuthProvider,
   signInWithPopup,
+  getCountFromServer,
+  deleteField, increment, FieldPath, orderBy, limit, startAfter, getCountFromServer
 };
+
+// firebase-init.js (sketch)
+const usage = { reads: {}, writes: {}, hits: 0, misses: 0 };
+export const count = (kind, source, n = 1) => (usage[kind][source] = (usage[kind][source] || 0) + n);
+// call count("reads", "roster", snap.size) inside fetchAll, count("reads", "teams", ...) in loadAvailableTeams, etc.
+// on visibilitychange→hidden: one write to usage/{yyyy-mm-dd}_{uid} with the totals (about 150 writes/day for 50 users)
