@@ -15,7 +15,7 @@ export const PAGES = [
   { group: "Classroom", label: "Hall passes", href: "hallpass.html", perm: "hallPass", desc: "Sign learners out and back in." },
   { group: "Classroom", label: "Grade 8–9 seating", href: "seating-class.html", perm: "view", desc: "Seating plans by registration class." },
   { group: "Classroom", label: "Grade 10–11 seating", href: "seating-teacher.html", perm: "view", desc: "Seating plans by subject and teacher." },
-  { group: "Classroom", label: "LSU exam seating", href: "seating-lsu.html", perm: "view", desc: "Separate-venue exam seating." },
+  { group: "Classroom", label: "Custom seating", href: "seating-lsu.html", perm: "view", desc: "Custom-venue seating." },
   { group: "Administration", label: "Allocate subjects", href: "allocate.html", perm: "bulkAllocate", desc: "Enrol whole classes in a subject." },
   { group: "Administration", label: "Import students", href: "admin_import.html", perm: "bulkImport", desc: "Update the roster from the class-list workbook." },
   { group: "Administration", label: "User access", href: "admin_users.html", perm: "manageUsers", desc: "Add staff and set their user type." },

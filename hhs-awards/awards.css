@@ -1,0 +1,154 @@
+/* awards.css — page-specific styles; palette comes from style.css :root */
+
+.page-narrow { max-width: 820px; }
+.header-spacer { flex: 1; }
+
+/* Defined here because style.css has no .staff-link (also used by index.html) */
+.staff-link {
+  background: none;
+  border: none;
+  color: var(--gold-soft);
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 6px;
+}
+.staff-link:hover { color: #fff; }
+.btn-on-dark { color: var(--gold-soft); border-color: rgba(255, 255, 255, 0.25); }
+.btn-on-dark:hover { background: rgba(255, 255, 255, 0.08); }
+.user-badge {
+  font-size: 0.8rem;
+  color: var(--gold-soft);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 10px;
+  border-radius: 999px;
+}
+.user-badge:empty { display: none; }
+
+/* ---------- Panels ---------- */
+.panel {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 20px 22px;
+  margin-bottom: 20px;
+}
+.panel-title {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--ink);
+  margin: 0 0 12px;
+  border-bottom: 2px solid var(--gold);
+  padding-bottom: 6px;
+}
+.panel-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.panel-row .panel-title { flex: 1; }
+.panel-hint { color: var(--text-muted); font-size: 0.86rem; margin: 0 0 14px; }
+.auth-form { display: grid; gap: 12px; max-width: 320px; margin-bottom: 8px; }
+.auth-form input { width: 100%; }
+
+/* ---------- Form ---------- */
+input[type="email"], input[type="password"], textarea {
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text);
+}
+textarea { resize: vertical; }
+input[type="email"]:focus, input[type="password"]:focus, textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+#recommendForm label { margin-top: 12px; }
+#recommendForm .form-grid label { margin-top: 0; }
+.note-count { float: right; text-transform: none; letter-spacing: 0; font-weight: 400; }
+.ok-text { color: #2f6b3a; font-weight: 600; }
+.error-text:empty, .ok-text:empty { display: none; }
+
+/* ---------- Student picker ---------- */
+.match-list { display: grid; gap: 4px; margin-top: 6px; }
+.match-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.match-row:hover { background: var(--gold-soft); }
+.match-name { font-weight: 600; color: var(--ink); }
+.match-meta { font-size: 0.78rem; color: var(--text-muted); }
+.selected-student {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border-radius: 8px;
+  border: 1px dashed var(--line-strong);
+}
+
+/* ---------- Tabs ---------- */
+.tab-row { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+.tab {
+  border: 1px solid var(--line-strong);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tab.is-active { background: var(--ink); border-color: var(--ink); color: #fff; }
+.tab:not(.is-active):hover { background: var(--paper); }
+
+/* ---------- Recommendation cards ---------- */
+.rec-list { display: grid; gap: 12px; }
+.rec-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  background: #fff;
+}
+.rec-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; font-weight: 600; color: var(--ink); }
+.rec-line { margin: 2px 0; font-size: 0.88rem; }
+.rec-meta { margin: 4px 0 0; font-size: 0.76rem; color: var(--text-muted); }
+.rec-note { margin: 8px 0 0; padding-left: 10px; border-left: 3px solid var(--gold); font-size: 0.86rem; color: var(--ink-soft); }
+.rec-outcome { margin: 8px 0 0; font-size: 0.82rem; color: var(--text-muted); }
+.rec-review { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.rec-issue-date {
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.status-pending { background: var(--gold-soft); color: #6b4a14; }
+.status-confirmed { background: #dcefe0; color: #2f6b3a; }
+.status-rejected { background: #f3dcdc; color: var(--maroon); }
+
+@media (max-width: 600px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .rec-head { flex-direction: column; align-items: flex-start; }
+}
