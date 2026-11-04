@@ -6,6 +6,7 @@
  */
 import { auth, onAuthStateChanged } from "./firebase-init.js";
 import { loadUserTypes, resolveUserType, can } from "./usertypes.js";
+import "./home-link.js";
 
 export const PAGES = [
   { group: "Students", label: "Student search", href: "search.html", perm: "view", desc: "Look up learners by name, admin number, class, subject or team." },
