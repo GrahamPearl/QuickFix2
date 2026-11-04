@@ -140,38 +140,6 @@ onAuthStateChanged(auth, async (user) => {
     $("gate").style.display = "none";
     $("app").classList.remove("is-hidden");
 
-    $("allPanel").classList.toggle("is-hidden", !canReview);
-    unsub = canReview
-      ? hp.watchBoard(onEntries, (err) =>
-          say("formMsg", `Live view failed: ${err.message}`, "err"),
-        )
-      : hp.watchMine(me, onEntries, (err) =>
-          say("formMsg", `Live view failed: ${err.message}`, "err"),
-        );
-
-    function onEntries(next) {
-      entries = next;
-      render();
-      if (sweeping) return;
-      const stale = entries.filter(
-        (e) =>
-          hp.dayKey(e.leaveTime.toDate()) < hp.dayKey() &&
-          (canReview || e.teacher === me),
-      );
-      if (!stale.length) return;
-      sweeping = true;
-      hp.sweepStale(stale)
-        .catch((e) => console.warn("sweep", e.code || e.message))
-        .finally(() => {
-          sweeping = false;
-        });
-    }
-
-    const flat = () =>
-      [...entries].sort(
-        (a, b) => a.leaveTime.toMillis() - b.leaveTime.toMillis(),
-      );
-
     $("adminNo").focus();
   } catch (err) {
     console.error(err);
@@ -236,8 +204,9 @@ function render() {
   $("mine").innerHTML = tbl(mine, false);
   $("all").innerHTML = tbl(all, true);
 }
+
 setInterval(() => {
-  if (rows.length) render();
+  if (entries.length) render();
 }, 60000); // refresh minute counters; no reads
 
 /* ---------- sign out ---------- */

@@ -755,23 +755,8 @@ $("importBtn").addEventListener("click", async () => {
         return { before, after };
       };
 
-      const b = writeBatch(db);
-      all.slice(i, i + BATCH).forEach((o) => {
-        const ref = doc(db, COL, o.id);
-        if (o.t === "d") b.delete(ref);
-        else
-          b.set(
-            ref,
-            {
-              ...o.data,
-              updatedBy: S.user.email,
-              updatedAt: serverTimestamp(),
-            },
-            o.merge ? { merge: true } : undefined,
-          );
-      });
-
       const slice = all.slice(i, i + BATCH);
+      const b = writeBatch(db);
       slice.forEach((o) => {
         const ref = doc(db, COL, o.id);
         if (o.t === "d") b.delete(ref);

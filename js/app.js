@@ -1,24 +1,28 @@
 import {
-  db,
-  doc,
-  updateDoc,
-  writeBatch,
-  collection,
-  getDocs,
   auth,
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  getDoc,
   OAuthProvider,
   signInWithPopup,
+  deleteField,
 } from "./firebase-init.js";
 
 import { saveStudents, createStudent } from "./student-write-service.js";
 
 import { subjectKey, validateDraft } from "./edit-form.js";
 
-import { patchCachedStudents } from "./data-service.js";
+import {
+  getAllStudents,
+  ensureFreshRoster,
+  releaseRosterMemory,
+  getTeamsList,
+  collectSubjects,
+  collectClasses,
+  patchCachedStudent,
+  patchCachedStudents,
+  addCachedStudent,
+} from "./data-service.js";
 
 import { filterStudents, sortStudents } from "./search.js";
 
@@ -142,6 +146,24 @@ function applyRoster(raw) {
   refreshTeacherOptions();
 }
 
+/** Field-path updates for enrollments: only what changed, so stored extras (grade, class…) survive. */
+function enrollmentFields(before, after) {
+  const out = {};
+  const b = before.enrollments || {},
+    a = after.enrollments || {};
+  Object.keys(b).forEach((k) => {
+    if (!(k in a)) out[`enrollments.${k}`] = deleteField();
+  });
+  Object.entries(a).forEach(([k, e]) => {
+    const o = b[k];
+    ["subject", "teacher", "line"].forEach((f) => {
+      if (!o || JSON.stringify(o[f] ?? null) !== JSON.stringify(e[f] ?? null))
+        out[`enrollments.${k}.${f}`] = e[f] ?? "";
+    });
+  });
+  return out;
+}
+
 // Re-check at most every 10 minutes, on search submit or when the tab is shown again
 let lastCheck = Date.now();
 async function recheckRoster() {
@@ -164,6 +186,72 @@ els.form.addEventListener("submit", async (e) => {
 });
 document.addEventListener("visibilitychange", () => {
   if (!document.hidden) recheckRoster();
+});
+
+function showDrawer() {
+  els.drawer.classList.add("is-open");
+  els.scrim.classList.add("is-visible");
+  document.body.classList.add("no-scroll");
+}
+
+els.addStudentModalBtn?.addEventListener("click", () => {
+  if (!can(userTypes, userType, "addStudent")) return;
+  newStudentDraft = { subjectsSummary: [], enrollments: {} };
+  els.drawer.dataset.activeAdminNo = "";
+  els.drawerHeader.innerHTML = `<div><h2 class="drawer-name">New student</h2></div>`;
+  els.drawerContent.innerHTML = renderAddStudentForm(1, "", {}, collectSubjects(roster));
+  showDrawer();
+});
+
+els.drawerContent.addEventListener("submit", async (e) => {
+  if (e.target.id === "addStudentStep1Form") {
+    e.preventDefault();
+    const errorEl = document.getElementById("step1Error");
+    const raw = document.getElementById("newAdminNo").value.trim();
+    if (!raw) { errorEl.textContent = "Admin Number cannot be empty."; return; }
+    const adminNo = raw.padStart(5, "0");
+    if (!/^\d{5}$/.test(adminNo)) { errorEl.textContent = "Admin Number must be 5 digits."; return; }
+    if (roster.some((s) => String(s.adminNo) === adminNo)) {
+      errorEl.textContent = `A student with Admin Number "${adminNo}" already exists.`; return;
+    }
+    newStudentDraft.adminNo = adminNo;
+    els.drawerContent.innerHTML = renderAddStudentForm(2, adminNo, newStudentDraft, collectSubjects(roster));
+    return;
+  }
+
+  if (e.target.id === "addStudentStep2Form") {
+    e.preventDefault();
+    const errorEl = document.getElementById("step2Error");
+    els.drawerContent.querySelectorAll("[data-field]").forEach((i) => { newStudentDraft[i.dataset.field] = i.value; });
+    const problems = validateDraft(newStudentDraft);
+    if (problems.length) { errorEl.textContent = problems.join(" · "); return; }
+
+    const low = (v) => String(v || "").trim().toLowerCase();
+    const adminNo = String(newStudentDraft.adminNo).padStart(5, "0");
+    const first = newStudentDraft.firstName.trim(), last = newStudentDraft.lastName.trim();
+    const cls = newStudentDraft.class.trim();
+    const rec = {
+      id: adminNo, adminNo, firstName: first, lastName: last, fullName: `${first} ${last}`.trim(),
+      grade: Number(newStudentDraft.grade), class: cls, registrationClass: cls,
+      gender: newStudentDraft.gender, birthdate: newStudentDraft.birthdate || "", agegroup: "",
+      photo: `${adminNo}.webp`,
+      searchTokens: [...new Set([adminNo, low(first), low(last), `${low(first)} ${low(last)}`.trim()])],
+      subjectsSummary: newStudentDraft.subjectsSummary || [], enrollments: newStudentDraft.enrollments || {},
+      teams: [], academic: { candidateNo: null, examNo: null }, flags: { concession: false },
+    };
+
+    const btn = e.target.querySelector('[type="submit"]');
+    btn.disabled = true; errorEl.textContent = "";
+    try {
+      await createStudent(rec, { source: "add-student" });
+      roster.unshift(rec);
+      addCachedStudent(rec);
+      closeDrawer();
+      runSearch();
+    } catch (err) {
+      errorEl.textContent = `Could not save: ${err.message}`;
+    } finally { btn.disabled = false; }
+  }
 });
 
 function showLoginRequired() {
@@ -859,20 +947,22 @@ async function wireEvents() {
       ]),
     ];
 
-    const fields = Object.fromEntries(
-      [
-        "firstName",
-        "lastName",
-        "fullName",
-        "grade",
-        "class",
-        "registrationClass",
-        "gender",
-        "subjectsSummary",
-        "enrollments",
-        "searchTokens",
-      ].map((k) => [k, after[k]]),
-    );
+    const fields = {
+      ...Object.fromEntries(
+        [
+          "firstName",
+          "lastName",
+          "fullName",
+          "grade",
+          "class",
+          "registrationClass",
+          "gender",
+          "subjectsSummary",
+          "searchTokens",
+        ].map((k) => [k, after[k]]),
+      ),
+      ...enrollmentFields(before, after),
+    };
 
     const btn = e.target.querySelector('[type="submit"]');
     btn.disabled = true;
@@ -1039,43 +1129,79 @@ document.addEventListener("submit", async (e) => {
 
     //** ADD CODE HERE */
     const keyOf = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-const ops = [];
-roster.forEach((student) => {
-  const after = structuredClone(student);          // the live roster is untouched until the commit succeeds
-  let fields = null;
-  const subKey = subjectScope ? keyOf(subjectScope) : "";
-  const enr = subKey ? after.enrollments?.[subKey] : null;
+    const ops = [];
+    roster.forEach((student) => {
+      const after = structuredClone(student); // the live roster is untouched until the commit succeeds
+      let fields = null;
+      const subKey = subjectScope ? keyOf(subjectScope) : "";
+      const enr = subKey ? after.enrollments?.[subKey] : null;
 
-  if (targetField === "registrationClass" && String(after.registrationClass || "").trim().toLowerCase() === matchVal) {
-    after.registrationClass = newVal; fields = { registrationClass: newVal };
-  } else if (targetField === "grade" && String(after.grade ?? "").trim().toLowerCase() === matchVal) {
-    after.grade = isNaN(newVal) ? newVal : Number(newVal); fields = { grade: after.grade };
-  } else if (targetField === "subjectTeacher" && enr && String(enr.teacher || "").trim().toLowerCase() === matchVal) {
-    enr.teacher = newVal;
-    fields = { [`enrollments.${subKey}.teacher`]: newVal };
-  } else if (targetField === "subjectLine" && enr) {
-    enr.line = isNaN(newVal) ? newVal : Number(newVal); fields = { [`enrollments.${subKey}.line`]: enr.line };
+      if (
+        targetField === "registrationClass" &&
+        String(after.registrationClass || "")
+          .trim()
+          .toLowerCase() === matchVal
+      ) {
+        after.registrationClass = newVal;
+        fields = { registrationClass: newVal };
+      } else if (
+        targetField === "grade" &&
+        String(after.grade ?? "")
+          .trim()
+          .toLowerCase() === matchVal
+      ) {
+        after.grade = isNaN(newVal) ? newVal : Number(newVal);
+        fields = { grade: after.grade };
+      } else if (
+        targetField === "subjectTeacher" &&
+        enr &&
+        String(enr.teacher || "")
+          .trim()
+          .toLowerCase() === matchVal
+      ) {
+        enr.teacher = newVal;
+        fields = { [`enrollments.${subKey}.teacher`]: newVal };
+      } else if (targetField === "subjectLine" && enr) {
+        enr.line = isNaN(newVal) ? newVal : Number(newVal);
+        fields = { [`enrollments.${subKey}.line`]: enr.line };
+      }
+      if (fields)
+        ops.push({
+          adminNo: String(student.adminNo).trim(),
+          before: student,
+          after,
+          fields,
+        });
+    });
+
+    if (!ops.length) {
+      errorEl.textContent =
+        "No student records matched your filter criteria. Verify current value.";
+      return;
+    }
+    if (!confirm(`${ops.length} student record(s) will be changed. Continue?`))
+      return;
+
+    try {
+      const { updated, failed } = await saveStudents(ops, {
+        action: "bulk.update",
+        source: "bulk-modal",
+        note: `${targetField}: "${matchVal}" → "${newVal}"`,
+      });
+      const done = new Map(updated.map((o) => [String(o.adminNo), o.after]));
+      roster = roster.map((s) => done.get(String(s.adminNo)) || s);
+      patchCachedStudents([...done.values()]);
+      alert(
+        `Bulk update: ${updated.length} saved${failed.length ? `, ${failed.length} FAILED (${failed.map((f) => f.op.adminNo).join(", ")})` : ""}.`,
+      );
+      document.getElementById("bulkModalWrapper")?.remove();
+      runSearch();
+    } catch (err) {
+      console.error("Bulk update failed:", err);
+      errorEl.textContent = `Failed to save updates to database: ${err.message}`;
+    }
   }
-  if (fields) ops.push({ adminNo: String(student.adminNo).trim(), before: student, after, fields });
 });
-
-if (!ops.length) { errorEl.textContent = "No student records matched your filter criteria. Verify current value."; return; }
-if (!confirm(`${ops.length} student record(s) will be changed. Continue?`)) return;
-
-try {
-  const { updated, failed } = await saveStudents(ops, {
-    action: "bulk.update", source: "bulk-modal", note: `${targetField}: "${matchVal}" → "${newVal}"`,
-  });
-  const done = new Map(updated.map((o) => [String(o.adminNo), o.after]));
-  roster = roster.map((s) => done.get(String(s.adminNo)) || s);
-  patchCachedStudents([...done.values()]);
-  alert(`Bulk update: ${updated.length} saved${failed.length ? `, ${failed.length} FAILED (${failed.map((f) => f.op.adminNo).join(", ")})` : ""}.`);
-  document.getElementById("bulkModalWrapper")?.remove();
-  runSearch();
-} catch (err) {
-  console.error("Bulk update failed:", err);
-  errorEl.textContent = `Failed to save updates to database: ${err.message}`;
-}
 
 els.drawerContent.addEventListener("click", (e) => {
   if (e.target.id === "cancelAddBtn") {

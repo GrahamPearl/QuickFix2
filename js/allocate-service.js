@@ -17,19 +17,18 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  writeBatch,
   arrayUnion,
   serverTimestamp,
 } from "./firebase-init.js";
 
+import { MAX_LINE, buildEnrollment, patchStudent } from "./allocate-form.js";
+import { saveStudents } from "./student-write-service.js";
 import { subjectKey } from "./edit-form.js";
-import { MAX_LINE, buildEnrollment } from "./allocate-form.js";
 
 const {
   STUDENTS_COLLECTION,
   ALLOCATION_BATCHES_COLLECTION = "allocation-batches",
 } = window.APP_CONFIG;
-const CHUNK = 400; // Firestore allows 500 writes per batch
 
 export async function getGradeLines(grade) {
   const fallback = Array.from({ length: MAX_LINE }, (_, i) => i + 1);

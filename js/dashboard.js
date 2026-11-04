@@ -7,7 +7,6 @@ import { loadUserTypes, resolveUserType, can, getTypeDef, typeKeys } from "./use
 import { visiblePages } from "./pages.js";
 import { loadNotices, postNotice, removeNotice, visibleNotices } from "./notices-service.js";
 import { getRosterSettings, requestRosterRefresh, estimateRefreshCost, DAILY_READ_QUOTA } from "./settings-service.js";
-import { rebuildIndex } from "./roster-index.js";
 import { escapeHtml as esc } from "./html.js";
 
 const $ = (id) => document.getElementById(id);
@@ -33,7 +32,7 @@ $("rosterBtn").addEventListener("click", async () => {
   try {
     const { students, users, reads } = await estimateRefreshCost(cfg.collection);
     const pct = Math.round((reads / DAILY_READ_QUOTA) * 100);
-    const detail = `${users} users × ${students} students ≈ ${reads.toLocaleString()} reads (about ${pct}% of the free daily quota of ${DAILY_READ_QUOTA.toLocaleString()}).`;
+    const detail = `${users} users × ${perLoad} reads each ≈ ${reads.toLocaleString()} reads (about ${pct.perLoad}% of the free daily quota of ${DAILY_READ_QUOTA.toLocaleString()}).`;
 
     if (urgent && pct >= 50) {
       const typed = prompt(`${detail}\n\nAn urgent refresh could use up today's quota and lock everyone out until the daily reset (about 10:00 SA time).\n\nType REFRESH to continue.`);
@@ -187,15 +186,3 @@ async function setupRoster() {
       : " No roster index built yet: every user load reads every student.";
   } catch (err) { $("rosterInfo").textContent = `Could not read settings: ${err.message}`; }
 }
-
-$("indexBtn").addEventListener("click", async () => {
-  if (!me || !can(cfg, me.type, "refreshRoster")) return;
-  if (!confirm("Rebuild the roster index? This reads every student once and replaces the index for all users.")) return;
-  $("indexBtn").disabled = true; say("rosterMsg", "Rebuilding… (reading all students)", "warn");
-  try {
-    const r = await rebuildIndex({ user: me.user });
-    say("rosterMsg", `Index rebuilt: ${r.students} students in ${r.chunks} chunk(s). Users reload on their next search.`, "ok");
-    await setupRoster();
-  } catch (err) { say("rosterMsg", `Rebuild failed: ${err.message}`, "err"); }
-  finally { $("indexBtn").disabled = false; }
-});

@@ -24,7 +24,7 @@ import {
   where,
   arrayUnion,
   getCountFromServer,
-  deleteField, increment, FieldPath, orderBy, limit, startAfter, getCountFromServer
+  deleteField, increment, FieldPath, orderBy, limit, startAfter,
 } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-firestore.js";
 
 import {
@@ -62,7 +62,7 @@ export {
   OAuthProvider,
   signInWithPopup,
   getCountFromServer,
-  deleteField, increment, FieldPath, orderBy, limit, startAfter, getCountFromServer
+  deleteField, increment, FieldPath, orderBy, limit, startAfter,
 };
 
 // firebase-init.js (sketch)

@@ -1,0 +1,1 @@
+for f in js/*.js hhs-teams/js/*.js; do cp "$f" /tmp/check.mjs && node --check /tmp/check.mjs || echo "FAILED: $f"; done

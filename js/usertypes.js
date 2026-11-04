@@ -5,6 +5,7 @@
  * UI only: real enforcement must live in Firestore Security Rules.
  */
 import { db, doc, getDoc } from "./firebase-init.js";
+import { meter } from "./usage-meter.js";
 
 const TYPE_KEY = "hhs_usertype_v1";
 const TYPE_TTL = 10 * 60 * 1000;

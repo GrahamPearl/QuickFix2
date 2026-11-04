@@ -14,10 +14,16 @@ export const ROSTER_DEFAULTS = { forceRefreshAt: 0, urgent: false, minIntervalHo
 export const DAILY_READ_QUOTA = 50000;       // Firebase Spark limit
 const MIN_GAP_HOURS = { normal: 1, urgent: 24 };
 
+const SNAPSHOT = window.APP_CONFIG.SNAPSHOT_COLLECTION || "rosterSnapshot";
+
 export async function estimateRefreshCost(usersCollection = "authorized_users") {
   const count = async (name) => (await getCountFromServer(collection(db, name))).data().count;
-  const [students, users] = await Promise.all([count(STUDENTS), count(usersCollection)]);
-  return { students, users, reads: students * users };
+  const [students, users, metaSnap] = await Promise.all([
+    count(STUDENTS), count(usersCollection), getDoc(doc(db, SNAPSHOT, "_meta")),
+  ]);
+  const m = metaSnap.exists() ? metaSnap.data() : null;
+  const perLoad = m?.ready ? (m.chunks || 0) + 2 : students;   // snapshot: chunks + _meta + setting
+  return { students, users, perLoad, snapshot: Boolean(m?.ready), reads: perLoad * users };
 }
 
 export async function getRosterSettings() {

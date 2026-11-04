@@ -68,10 +68,8 @@ service cloud.firestore {
     }
 
     // ---------- hall passes ----------
-    match /active-hall-passes/{email} {
-      allow read:  if isHallStaff();
-      allow write: if isHallStaff() && (email == myEmail() || isHallReviewer());
-    }
+    
+    
     match /history-hall-pass/{id} {
       allow create: if isHallStaff();
       allow read:   if isHallReviewer();

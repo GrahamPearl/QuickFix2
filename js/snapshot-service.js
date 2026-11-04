@@ -5,37 +5,84 @@
  * as the student write (addSnapshotWrites), so the snapshot cannot silently drift.
  */
 import {
-  db, collection, doc, getDocs, getCountFromServer, writeBatch, serverTimestamp, deleteField, FieldPath,
+  db,
+  collection,
+  doc,
+  getDocs,
+  getCountFromServer,
+  writeBatch,
+  serverTimestamp,
+  deleteField,
+  FieldPath,
 } from "./firebase-init.js";
 import { meter } from "./usage-meter.js";
 
 const {
-  STUDENTS_COLLECTION = "students", SNAPSHOT_COLLECTION = "rosterSnapshot", SNAPSHOT_SPLIT_GRADES = [],
+  STUDENTS_COLLECTION = "students",
+  SNAPSHOT_COLLECTION = "rosterSnapshot",
+  SNAPSHOT_SPLIT_GRADES = [],
 } = window.APP_CONFIG;
-const SCHEMA = 1, META = "_meta", MAX_BYTES = 900_000; // Firestore document limit is 1 MiB
+const SCHEMA = 1,
+  META = "_meta",
+  MAX_BYTES = 900_000; // Firestore document limit is 1 MiB
 const SPLIT = new Set(SNAPSHOT_SPLIT_GRADES.map(Number));
 const ref = (id) => doc(db, SNAPSHOT_COLLECTION, id);
 
 /* ---------- pure helpers ---------- */
-const KEEP = ["adminNo", "firstName", "lastName", "fullName", "grade", "class", "registrationClass",
-  "gender", "birthdate", "agegroup", "photo"];
+const KEEP = [
+  "adminNo",
+  "firstName",
+  "lastName",
+  "fullName",
+  "grade",
+  "class",
+  "registrationClass",
+  "gender",
+  "birthdate",
+  "agegroup",
+  "photo",
+];
+
+const enc = new TextEncoder();
+const bytes = (s) => enc.encode(s).length;
+// publishSnapshot:  sizes[cid] = bytes(JSON.stringify(students));
+// checkSnapshot:    kb: Math.round(bytes(JSON.stringify(d.data())) / 1024)
 
 /** Only what search, drawer, seating, allocation and teams pages read. Everything else stays in students/{id}. */
 export function toCompact(s) {
   const c = {};
-  KEEP.forEach((k) => { if (s[k] !== undefined && s[k] !== null && s[k] !== "") c[k] = s[k]; });
+  KEEP.forEach((k) => {
+    if (s[k] !== undefined && s[k] !== null && s[k] !== "") c[k] = s[k];
+  });
   c.adminNo = String(s.adminNo);
   c.subjectsSummary = s.subjectsSummary || [];
-  c.enrollments = Object.fromEntries(Object.entries(s.enrollments || {}).map(([k, e]) =>
-    [k, { subject: e?.subject || "", teacher: e?.teacher || "", line: e?.line ?? "" }]));
-  c.teams = (s.teams || []).map((t) => ({ teamName: t.teamName || "", ageGroup: t.ageGroup || "", role: t.role || "Member" }));
+  c.enrollments = Object.fromEntries(
+    Object.entries(s.enrollments || {}).map(([k, e]) => [
+      k,
+      {
+        subject: e?.subject || "",
+        teacher: e?.teacher || "",
+        line: e?.line ?? "",
+      },
+    ]),
+  );
+  c.teams = (s.teams || []).map((t) => ({
+    teamName: t.teamName || "",
+    ageGroup: t.ageGroup || "",
+    role: t.role || "Member",
+  }));
   return c;
 }
 
 export function fromCompact(c) {
   const low = (v) => String(v || "").toLowerCase();
-  const f = low(c.firstName), l = low(c.lastName);
-  return { ...c, id: c.adminNo, searchTokens: [...new Set([String(c.adminNo), f, l, `${f} ${l}`.trim()])] };
+  const f = low(c.firstName),
+    l = low(c.lastName);
+  return {
+    ...c,
+    id: c.adminNo,
+    searchTokens: [...new Set([String(c.adminNo), f, l, `${f} ${l}`.trim()])],
+  };
 }
 
 export function chunkId(s) {
@@ -51,20 +98,32 @@ export function chunkId(s) {
  */
 export function addSnapshotWrites(writer, changes) {
   const per = new Map();
-  const slot = (cid) => per.get(cid) || per.set(cid, { set: {}, del: new Set() }).get(cid);
+  const slot = (cid) =>
+    per.get(cid) || per.set(cid, { set: {}, del: new Set() }).get(cid);
   for (const { before, after } of changes) {
     const id = String((after || before).adminNo);
-    const from = before ? chunkId(before) : null, to = after ? chunkId(after) : null;
-    if (from && from !== to) slot(from).del.add(id);          // moved to another grade/class chunk
+    const from = before ? chunkId(before) : null,
+      to = after ? chunkId(after) : null;
+    if (from && from !== to) slot(from).del.add(id); // moved to another grade/class chunk
     if (to) slot(to).set[id] = JSON.stringify(toCompact(after));
   }
   per.forEach((p, cid) => {
     const students = { ...p.set };
-    p.del.forEach((id) => { students[id] = deleteField(); });
-    const ids = Object.keys(students);
-    writer.set(ref(cid), { chunk: cid, updatedAt: serverTimestamp(), students }, {
-      mergeFields: [new FieldPath("chunk"), new FieldPath("updatedAt"), ...ids.map((id) => new FieldPath("students", id))],
+    p.del.forEach((id) => {
+      students[id] = deleteField();
     });
+    const ids = Object.keys(students);
+    writer.set(
+      ref(cid),
+      { chunk: cid, updatedAt: serverTimestamp(), students },
+      {
+        mergeFields: [
+          new FieldPath("chunk"),
+          new FieldPath("updatedAt"),
+          ...ids.map((id) => new FieldPath("students", id)),
+        ],
+      },
+    );
   });
   return per.size;
 }
@@ -80,7 +139,11 @@ export async function loadSnapshot() {
   snap.forEach((d) => {
     if (d.id === META) return;
     Object.values(d.data().students || {}).forEach((json) => {
-      try { students.push(fromCompact(JSON.parse(json))); } catch { console.warn("Bad snapshot entry in", d.id); }
+      try {
+        students.push(fromCompact(JSON.parse(json)));
+      } catch {
+        console.warn("Bad snapshot entry in", d.id);
+      }
     });
   });
   return { students, chunks: snap.size - 1 };
@@ -91,7 +154,8 @@ export async function loadSnapshot() {
 export async function publishSnapshot() {
   const all = await getDocs(collection(db, STUDENTS_COLLECTION));
   meter.read("snapshot-publish", all.size);
-  const per = new Map(), sizes = {};
+  const per = new Map(),
+    sizes = {};
   all.forEach((d) => {
     const s = { ...d.data(), adminNo: String(d.data().adminNo ?? d.id) };
     const cid = chunkId(s);
@@ -101,17 +165,33 @@ export async function publishSnapshot() {
   for (const [cid, students] of per) {
     sizes[cid] = JSON.stringify(students).length;
     if (sizes[cid] > MAX_BYTES) {
-      throw new Error(`Chunk ${cid} is ${Math.round(sizes[cid] / 1024)} KB (limit ~1024 KB). Add its grade to SNAPSHOT_SPLIT_GRADES in config.js, redeploy, and publish again.`);
+      throw new Error(
+        `Chunk ${cid} is ${Math.round(sizes[cid] / 1024)} KB (limit ~1024 KB). Add its grade to SNAPSHOT_SPLIT_GRADES in config.js, redeploy, and publish again.`,
+      );
     }
   }
   const old = await getDocs(collection(db, SNAPSHOT_COLLECTION));
   meter.read("snapshot-publish", old.size);
   const batch = writeBatch(db);
-  old.forEach((d) => { if (d.id !== META && !per.has(d.id)) batch.delete(d.ref); });
-  per.forEach((students, cid) => batch.set(ref(cid), {
-    chunk: cid, builtAt: serverTimestamp(), updatedAt: serverTimestamp(), count: Object.keys(students).length, students,
-  }));
-  batch.set(ref(META), { ready: true, schema: SCHEMA, builtAt: serverTimestamp(), students: all.size, chunks: per.size });
+  old.forEach((d) => {
+    if (d.id !== META && !per.has(d.id)) batch.delete(d.ref);
+  });
+  per.forEach((students, cid) =>
+    batch.set(ref(cid), {
+      chunk: cid,
+      builtAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      count: Object.keys(students).length,
+      students,
+    }),
+  );
+  batch.set(ref(META), {
+    ready: true,
+    schema: SCHEMA,
+    builtAt: serverTimestamp(),
+    students: all.size,
+    chunks: per.size,
+  });
   await batch.commit();
   meter.write("snapshot", per.size + 1);
   return { students: all.size, chunks: per.size, sizes };
@@ -120,7 +200,8 @@ export async function publishSnapshot() {
 /** Compares student count with snapshot count and reports chunk sizes. ~chunks + 1 reads. */
 export async function checkSnapshot() {
   const [snap, total] = await Promise.all([
-    getDocs(collection(db, SNAPSHOT_COLLECTION)), getCountFromServer(collection(db, STUDENTS_COLLECTION)),
+    getDocs(collection(db, SNAPSHOT_COLLECTION)),
+    getCountFromServer(collection(db, STUDENTS_COLLECTION)),
   ]);
   meter.read("snapshot-check", snap.size + 1);
   let inSnapshot = 0;
@@ -129,8 +210,18 @@ export async function checkSnapshot() {
     if (d.id === META) return;
     const n = Object.keys(d.data().students || {}).length;
     inSnapshot += n;
-    chunks.push({ id: d.id, count: n, kb: Math.round(JSON.stringify(d.data()).length / 1024) });
+    chunks.push({
+      id: d.id,
+      count: n,
+      kb: Math.round(JSON.stringify(d.data()).length / 1024),
+    });
   });
   const ready = Boolean(snap.docs.find((d) => d.id === META)?.data()?.ready);
-  return { ready, students: total.data().count, inSnapshot, chunks, ok: ready && total.data().count === inSnapshot };
+  return {
+    ready,
+    students: total.data().count,
+    inSnapshot,
+    chunks,
+    ok: ready && total.data().count === inSnapshot,
+  };
 }

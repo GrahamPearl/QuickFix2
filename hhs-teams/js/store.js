@@ -6,6 +6,9 @@ import * as fs from "./firestore.js";
 import { setSync, showUnsaved, splitKey, toast } from "./utils.js";
 import { getAllStudents, clearTeamsListCache } from "../../js/data-service.js";
 
+let syncChain = Promise.resolve();
+const queueSync = (...args) => (syncChain = syncChain.then(() => fs.syncStudentTeam(...args)).catch(console.warn));
+
 export const bus = new EventTarget();
 export const state = {
   students: new Map(),
@@ -112,7 +115,7 @@ export function addMember(admno) {
     return toast(`${admno} is already in this team.`, "warn");
   
   state.roster.push(admno); state.rolesCur[admno] = "Member"; commit();
-  fs.syncStudentTeam(admno, state.key, "Member");
+  fs.queueSync(admno, state.key, "Member");
   return true;
 }
 
@@ -120,14 +123,14 @@ export function removeMember(admno) {
   const i = state.roster.indexOf(admno);
   if (i < 0) return toast(`${admno} is not in this team.`, "warn");
   state.roster.splice(i, 1); delete state.rolesCur[admno]; commit();
-  fs.syncStudentTeam(admno, state.key, null);
+  fs.queueSync(admno, state.key, null);
   toast("Removed from team.", "danger");
 }
 
 export function setRole(admno, role) {
   state.rolesCur[admno] = role;
   commit();
-  fs.syncStudentTeam(admno, state.key, role);
+  fs.queueSync(admno, state.key, role);
 }
 
 export function bulkAdd(text) {
@@ -141,7 +144,7 @@ export function bulkAdd(text) {
         state.roster.push(t);
         state.rolesCur[t] = "Member";
         n++;
-        fs.syncStudentTeam(t, state.key, "Member");
+        fs.queueSync(t, state.key, "Member");
       }
     });
   if (n) commit();
