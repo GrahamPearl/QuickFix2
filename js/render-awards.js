@@ -34,7 +34,7 @@ export function renderTeamOptions(teams) {
   return (
     `<option value="">Select a team…</option>` +
     teams
-      .map((t) => `<option value="${escapeHtml(t.teamId)}">${escapeHtml(t.name)} (${escapeHtml(t.season || "")})</option>`)
+      .map((t) => `<option value="${escapeHtml(t.teamId)}">${escapeHtml(t.name)}${t.season ? ` (${escapeHtml(t.season)})` : ""}</option>`)
       .join("")
   );
 }

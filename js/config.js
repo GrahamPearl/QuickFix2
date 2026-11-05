@@ -29,6 +29,7 @@ window.APP_CONFIG = {
     "Enrichment",
   ],
   TEAMS_COLLECTION: "teams",
+  AWARDS_RECOMMENDATIONS_COLLECTION: "awards-recommendations",
   // Firestore project config (safe to expose client-side; access is
   // controlled by Firestore Security Rules, not by hiding this).
   FIREBASE_CONFIG: {
