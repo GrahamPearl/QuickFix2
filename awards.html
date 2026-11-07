@@ -17,36 +17,22 @@
         <p class="site-subtitle">RECOMMEND &amp; APPROVE</p>
       </div>
       <div class="header-spacer"></div>
-      <a href="index.html" class="staff-link">Student lookup</a>
+      <a href="index.html" class="staff-link">&larr; Dashboard</a>
       <div id="userBadge" class="user-badge"></div>
-      <button id="signOutBtn" class="btn btn-ghost btn-on-dark">Sign out</button>
     </div>
   </header>
 
   <main class="page page-narrow">
 
-    <!-- Auth gate -->
-    <section id="authGate" class="panel">
-      <h2 class="panel-title">Staff sign in</h2>
-      <p class="panel-hint">Awards can only be recommended or approved by authorised staff.</p>
-      <form id="authForm" class="auth-form">
-        <div>
-          <label for="authEmail">Email</label>
-          <input type="email" id="authEmail" required autocomplete="username" />
-        </div>
-        <div>
-          <label for="authPassword">Password</label>
-          <input type="password" id="authPassword" required autocomplete="current-password" />
-        </div>
-        <button type="submit" class="btn btn-primary">Sign in</button>
-      </form>
-      <p id="authError" class="error-text"></p>
-    </section>
+    <!-- Access check (pages.js redirects to the dashboard if the user may not open this page) -->
+    <div id="gate" class="loading-state">
+      <span class="spinner" aria-hidden="true"></span><span>Checking your access…</span>
+    </div>
 
     <!-- Tool -->
     <div id="toolPanel" class="is-hidden">
 
-      <section class="panel">
+      <section id="recommendPanel" class="panel">
         <h2 class="panel-title">1. Recommend an award</h2>
         <form id="recommendForm" novalidate>
           <label for="studentSearch">Student</label>
@@ -54,16 +40,21 @@
           <div id="studentMatches" class="match-list"></div>
           <div id="selectedStudent" class="selected-student"></div>
 
-          <div class="form-grid">
+          <div class="form-grid form-grid-3">
             <div>
               <label for="teamSelect">Team</label>
               <select id="teamSelect"></select>
+            </div>
+            <div id="ageGroupField" class="is-hidden">
+              <label for="ageGroupSelect">Age group</label>
+              <select id="ageGroupSelect"></select>
             </div>
             <div>
               <label for="levelSelect">Award level</label>
               <select id="levelSelect"></select>
             </div>
           </div>
+          <p id="memberWarning" class="warn-text"></p>
 
           <label for="noteInput">Note (optional) <span id="noteCount" class="note-count"></span></label>
           <textarea id="noteInput" rows="3" maxlength="300"></textarea>
@@ -83,9 +74,12 @@
           <button type="button" class="tab is-active" data-status="pending">Pending</button>
           <button type="button" class="tab" data-status="confirmed">Confirmed</button>
           <button type="button" class="tab" data-status="rejected">Declined</button>
+          <button type="button" class="tab" data-status="revoked">Revoked</button>
+          <button type="button" class="tab" data-status="withdrawn">Withdrawn</button>
           <button type="button" class="tab" data-status="all">All</button>
         </div>
         <div id="recList" class="rec-list"></div>
+        <p><button type="button" id="loadMoreBtn" class="btn btn-ghost is-hidden">Load more</button></p>
       </section>
 
     </div>

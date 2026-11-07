@@ -46,3 +46,5 @@ export const getTypeDef = (cfg, type) =>
   cfg && type ? cfg.types[type] || null : null;
 export const can = (cfg, type, permission) =>
   Boolean(getTypeDef(cfg, type)?.permissions?.[permission]);
+
+//return (cfgPromise ??= fetch(new URL("../json/usertypes.json", import.meta.url), { cache: "no-cache" })

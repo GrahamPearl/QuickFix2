@@ -152,3 +152,25 @@ input[type="email"]:focus, input[type="password"]:focus, textarea:focus {
   .form-grid { grid-template-columns: 1fr; }
   .rec-head { flex-direction: column; align-items: flex-start; }
 }
+
+.form-grid-3 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.warn-text { color: #b36b00; font-weight: 600; font-size: 0.86rem; margin: 0 0 4px; }
+.warn-text:empty { display: none; }
+ 
+.rec-class { font-size: 0.78rem; color: var(--text-muted); margin-left: 6px; }
+.rec-badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 0; }
+.rec-badge {
+  font-size: 0.7rem; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+  border: 1px solid var(--line-strong); color: var(--ink-soft); background: var(--paper);
+}
+.rec-badge-warn { background: #fff7e0; border-color: var(--gold); color: #6b4a14; }
+ 
+.rec-approve-fields { display: flex; gap: 12px; flex-wrap: wrap; }
+.rec-approve-fields label { margin: 0; }
+.rec-school-year { width: 100px; border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; font: inherit; font-size: 0.85rem; }
+.rec-check { display: flex; gap: 8px; align-items: flex-start; text-transform: none; letter-spacing: 0; font-size: 0.84rem; font-weight: 500; color: var(--text); margin: 4px 0; }
+.rec-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.rec-review { flex-direction: column; align-items: stretch; }
+ 
+.status-revoked { background: #f3dcdc; color: var(--maroon); }
+.status-withdrawn { background: var(--paper); color: var(--text-muted); border: 1px solid var(--line-strong); }

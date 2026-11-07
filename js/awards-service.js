@@ -1,153 +1,204 @@
 /**
  * awards-service.js
- * Firestore access for the two-stage awards workflow.
+ * Firestore access for the awards workflow. LEDGER ONLY: everything lives in
+ * awards-recommendations; students/* and teams/* are never written.
  *
- *  - createRecommendation: admin/approver -> awards-recommendations (status "pending").
- *    The student record is NOT touched.
- *  - confirmRecommendation: approver only. ONE transaction updates the student
- *    (awards, teamMemberships, teamsSummary), the team (members) and the
- *    recommendation (status/approver/issue date) together, then returns the
- *    post-transaction student so callers can patch their caches with it.
- *  - rejectRecommendation: approver only; marks the recommendation rejected.
+ *   pending --approve--> confirmed --revoke--> revoked
+ *   pending --decline--> rejected
+ *   pending --withdraw-> withdrawn
  *
- * The same award level may be issued to the same student more than once for a
- * team; every confirmation appends a new entry and increments the counter.
+ * Every state change is ONE transaction: 1 read (the recommendation) + 1 update + 1 audit-log entry.
+ * Creating a recommendation is a single addDoc. Each function returns the updated record so the
+ * page can patch its list instead of re-reading it.
+ * Emails are stored lower-cased (the rules compare with request.auth.token.email.lower()).
  */
 import {
-  db,
-  collection,
-  doc,
-  addDoc,
-  getDocs,
-  query,
-  where,
-  runTransaction,
-  serverTimestamp,
-  arrayUnion,
+  db, collection, doc, addDoc, getDocs, query, where, orderBy, limit, startAfter,
+  runTransaction, serverTimestamp,
 } from "./firebase-init.js";
+import { buildAudit } from "./audit-service.js";
+import { meter } from "./usage-meter.js";
+import { levelLabel, validateApproval, schoolYearOf } from "./awards-form.js";
 
-const { STUDENTS_COLLECTION, TEAMS_COLLECTION, AWARDS_RECOMMENDATIONS_COLLECTION } = window.APP_CONFIG;
+const { AWARDS_RECOMMENDATIONS_COLLECTION, AUDIT_COLLECTION = "audit-log" } = window.APP_CONFIG;
+const PAGE = 50;
+const PENDING_PAGE = 100;
 
-const emptyCounts = () => ({ merits: 0, halfColours: 0, fullColours: 0 });
+const col = () => collection(db, AWARDS_RECOMMENDATIONS_COLLECTION);
+const recRef = (id) => doc(db, AWARDS_RECOMMENDATIONS_COLLECTION, id);
+const auditRef = () => doc(collection(db, AUDIT_COLLECTION));
+const emailOf = (u) => String(u?.email || "").toLowerCase();
+const stale = (message) => Object.assign(new Error(message), { stale: true });
 
-/** Local-date ISO string (avoids the UTC off-by-one after 22:00 in UTC+2). */
+/** Local-date ISO string (avoids the UTC off-by-one around midnight). */
 export function todayLocal() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
+const describe = (rec, extra = "") =>
+  `${levelLabel(rec.awardLevel)} · ${rec.teamName}${rec.ageGroup ? ` ${rec.ageGroup}` : ""}${extra ? ` · ${extra}` : ""}`;
+
+const audit = (rec, id, action, extra) =>
+  buildAudit({
+    ops: [{ adminNo: rec.adminNo }],
+    action,
+    source: "awards-page",
+    note: describe(rec, extra),
+    extra: { recommendationId: id },
+  });
+
+/** Reads inside a transaction and checks the current status. */
+async function load(tx, ref, expected) {
+  const snap = await tx.get(ref);
+  if (!snap.exists()) throw stale("This recommendation no longer exists.");
+  const rec = snap.data();
+  if (rec.status !== expected) throw stale(`This recommendation is already ${rec.status}.`);
+  return rec;
+}
+
+function finish(id, rec, patch, stamps) {
+  meter.read("awards-tx", 1);
+  meter.write("awards", 1);
+  meter.write("audit", 1);
+  return { id, ...rec, ...patch, ...stamps };
+}
+
+/* ---------------- create ---------------- */
+
+/** @returns {Promise<string>} the new document id */
 export async function createRecommendation(payload, user) {
-  const ref = await addDoc(collection(db, AWARDS_RECOMMENDATIONS_COLLECTION), {
+  const ref = await addDoc(col(), {
     ...payload,
     status: "pending",
     recommendedBy: user.uid,
-    recommendedByEmail: user.email,
+    recommendedByEmail: emailOf(user),
     recommendedAt: serverTimestamp(),
-    confirmedBy: null,
-    confirmedByEmail: null,
-    confirmedAt: null,
-    issuedDate: null,
-    rejectedReason: null,
   });
+  meter.write("awards", 1);
   return ref.id;
 }
 
+/* ---------------- read ---------------- */
+
 /**
- * @param {"pending"|"confirmed"|"rejected"|"all"} status
- * Sorted newest-first client-side, so no composite index is needed.
+ * One page, newest first. status: pending | confirmed | rejected | revoked | withdrawn | all.
+ * Needs the composite index (status ASC, recommendedAt DESC) for the status tabs.
+ * @returns {Promise<{rows:Array, last:Object|null, full:boolean}>} full = there may be more
  */
-export async function listRecommendations(status = "pending") {
-  const col = collection(db, AWARDS_RECOMMENDATIONS_COLLECTION);
-  const snap = await getDocs(status === "all" ? col : query(col, where("status", "==", status)));
-  return snap.docs
-    .map((d) => ({ id: d.id, ...d.data() }))
-    .sort((a, b) => (b.recommendedAt?.seconds ?? 0) - (a.recommendedAt?.seconds ?? 0));
+export async function listRecommendations(status = "pending", { after = null } = {}) {
+  const n = status === "pending" ? PENDING_PAGE : PAGE;
+  const clauses = [
+    ...(status === "all" ? [] : [where("status", "==", status)]),
+    orderBy("recommendedAt", "desc"),
+    ...(after ? [startAfter(after)] : []),
+    limit(n),
+  ];
+  const snap = await getDocs(query(col(), ...clauses));
+  meter.read("awards-list", snap.size);
+  return {
+    rows: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    last: snap.docs.at(-1) || null,
+    full: snap.size === n,
+  };
 }
 
 /**
- * @returns {Promise<{student: Object, team: Object}>} post-transaction records
+ * How many CONFIRMED awards the student already has for this team + level (any year, any age group).
+ * Equality filters only, so no composite index. Revoked awards are excluded automatically.
  */
-export async function confirmRecommendation({ recommendationId, approver, issuedDate = todayLocal() }) {
-  const recRef = doc(collection(db, AWARDS_RECOMMENDATIONS_COLLECTION), recommendationId);
+export async function countPriorAwards({ adminNo, teamName, awardLevel, excludeId = "" }) {
+  const snap = await getDocs(
+    query(col(), where("adminNo", "==", String(adminNo)), where("status", "==", "confirmed")),
+  );
+  meter.read("awards-prior", snap.size);
+  return snap.docs.filter((d) => {
+    const r = d.data();
+    return d.id !== excludeId && r.teamName === teamName && r.awardLevel === awardLevel;
+  }).length;
+}
 
+/* ---------------- approver actions ---------------- */
+
+export function confirmRecommendation({
+  recommendationId, approver, issuedDate = todayLocal(),
+  schoolYear = schoolYearOf(issuedDate), nonMemberConfirmed = false, priorCount = 0,
+}) {
+  const ref = recRef(recommendationId);
   return runTransaction(db, async (tx) => {
-    // ---- all reads first ----
-    const recSnap = await tx.get(recRef);
-    if (!recSnap.exists()) throw new Error("This recommendation no longer exists.");
-    const rec = recSnap.data();
-    if (rec.status !== "pending") throw new Error(`This recommendation is already ${rec.status}.`);
-
-    const studentRef = doc(collection(db, STUDENTS_COLLECTION), String(rec.adminNo));
-    const teamRef = doc(collection(db, TEAMS_COLLECTION), rec.teamId);
-    const [studentSnap, teamSnap] = await Promise.all([tx.get(studentRef), tx.get(teamRef)]);
-    if (!studentSnap.exists()) throw new Error(`Student ${rec.adminNo} no longer exists.`);
-    if (!teamSnap.exists()) throw new Error(`Team "${rec.teamName}" no longer exists.`);
-    if (!(rec.awardLevel in emptyCounts())) throw new Error(`Unknown award level "${rec.awardLevel}".`);
-
-    const student = studentSnap.data();
-    const team = teamSnap.data();
-
-    // ---- compute ----
-    const memberships = { ...(student.teamMemberships || {}) };
-    const current = memberships[rec.teamId] || {
-      teamId: rec.teamId,
-      teamName: team.name,
-      category: team.category || "",
-      awards: emptyCounts(),
-    };
-    const awardCounts = { ...emptyCounts(), ...current.awards };
-    awardCounts[rec.awardLevel] += 1;
-    memberships[rec.teamId] = { ...current, teamName: team.name, awards: awardCounts };
-
-    const awards = [
-      ...(student.awards || []),
-      {
-        recommendationId: recommendationId,
-        teamId: rec.teamId,
-        teamName: team.name,
-        level: rec.awardLevel,
-        note: rec.note || "",
-        issuedDate,
-        confirmedBy: approver.email,
-      },
-    ];
-    const teamsSummary = Array.from(new Set([...(student.teamsSummary || []), team.name]));
-    const members = Array.from(new Set([...(team.members || []), String(rec.adminNo)]));
-
-    // ---- all writes together ----
-    tx.update(studentRef, { awards, teamMemberships: memberships, teamsSummary });
-    tx.update(teamRef, { members: arrayUnion(String(rec.adminNo)) });
-    tx.update(recRef, {
+    const rec = await load(tx, ref, "pending");
+    const problems = validateApproval({ issuedDate, schoolYear, nonMember: Boolean(rec.nonMember), nonMemberConfirmed });
+    if (problems.length) throw new Error(problems.join(" · "));
+    const patch = {
       status: "confirmed",
       confirmedBy: approver.uid,
-      confirmedByEmail: approver.email,
+      confirmedByEmail: emailOf(approver),
       confirmedAt: serverTimestamp(),
       issuedDate,
-    });
-
-    return {
-      student: { ...student, awards, teamMemberships: memberships, teamsSummary },
-      team: { ...team, teamId: rec.teamId, members },
+      schoolYear: Number(schoolYear),
+      reAward: priorCount > 0,
+      priorCount,
+      ...(rec.nonMember ? { nonMemberConfirmed: true } : {}),
     };
+    tx.update(ref, patch);
+    tx.set(auditRef(), audit(rec, recommendationId, "award.confirm", `school year ${patch.schoolYear}`));
+    return finish(recommendationId, rec, patch, { confirmedAt: new Date() });
   });
 }
 
-/** Reviewer stamps reuse confirmedBy/confirmedByEmail/confirmedAt for rejections too. */
-export async function rejectRecommendation({ recommendationId, approver, reason }) {
+export function rejectRecommendation({ recommendationId, approver, reason }) {
   if (!reason || !reason.trim()) throw new Error("A reason is required to decline.");
-  const recRef = doc(collection(db, AWARDS_RECOMMENDATIONS_COLLECTION), recommendationId);
-
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(recRef);
-    if (!snap.exists()) throw new Error("This recommendation no longer exists.");
-    if (snap.data().status !== "pending") throw new Error(`This recommendation is already ${snap.data().status}.`);
-    tx.update(recRef, {
+  const ref = recRef(recommendationId);
+  return runTransaction(db, async (tx) => {
+    const rec = await load(tx, ref, "pending");
+    const patch = {
       status: "rejected",
       rejectedReason: reason.trim(),
       confirmedBy: approver.uid,
-      confirmedByEmail: approver.email,
+      confirmedByEmail: emailOf(approver),
       confirmedAt: serverTimestamp(),
-    });
+    };
+    tx.update(ref, patch);
+    tx.set(auditRef(), audit(rec, recommendationId, "award.reject", reason.trim().slice(0, 80)));
+    return finish(recommendationId, rec, patch, { confirmedAt: new Date() });
+  });
+}
+
+/** Approvers only. The record is kept; counts and reports exclude it. */
+export function revokeAward({ recommendationId, approver, reason }) {
+  if (!reason || !reason.trim()) throw new Error("A reason is required to revoke.");
+  const ref = recRef(recommendationId);
+  return runTransaction(db, async (tx) => {
+    const rec = await load(tx, ref, "confirmed");
+    const patch = {
+      status: "revoked",
+      revokedBy: approver.uid,
+      revokedByEmail: emailOf(approver),
+      revokedAt: serverTimestamp(),
+      revokedReason: reason.trim(),
+    };
+    tx.update(ref, patch);
+    tx.set(auditRef(), audit(rec, recommendationId, "award.revoke", reason.trim().slice(0, 80)));
+    return finish(recommendationId, rec, patch, { revokedAt: new Date() });
+  });
+}
+
+/* ---------------- any recommender ---------------- */
+
+/** Removes a PENDING recommendation from the queue (soft: status "withdrawn", history kept). */
+export function withdrawRecommendation({ recommendationId, user }) {
+  const ref = recRef(recommendationId);
+  return runTransaction(db, async (tx) => {
+    const rec = await load(tx, ref, "pending");
+    const patch = {
+      status: "withdrawn",
+      withdrawnBy: user.uid,
+      withdrawnByEmail: emailOf(user),
+      withdrawnAt: serverTimestamp(),
+    };
+    tx.update(ref, patch);
+    tx.set(auditRef(), audit(rec, recommendationId, "award.withdraw"));
+    return finish(recommendationId, rec, patch, { withdrawnAt: new Date() });
   });
 }

@@ -3,34 +3,106 @@
   "collection": "authorized_users",
   "types": {
     "admin": {
-      "label": "Admin", "level": 0,
+      "label": "Admin",
+      "level": 0,
       "description": "Full access: edit students, bulk tools, teams, notices and user access.",
-      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "bulkAllocate": true, "bulkImport": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true, "viewAudit": true, "publishSnapshot": true }
+      "permissions": {
+        "view": true,
+        "viewTeams": true,
+        "editTeams": true,
+        "teamsAdmin": true,
+        "edit": true,
+        "addStudent": true,
+        "bulkUpdate": true,
+        "manageUsers": true,
+        "editTimetable": true,
+        "bulkAllocate": true,
+        "bulkImport": true,
+        "hallPass": true,
+        "hallPassReview": true,
+        "viewAwards": true,
+        "recommendAwards": true,
+        "approveAwards": true,
+        "postNotices": true,
+        "refreshRoster": true,
+        "viewAudit": true,
+        "publishSnapshot": true
+      }
     },
     "staff-head": {
-      "label": "Head Staff", "level": 0,
-      "description": "Edit students, manage teams and users, post notices.",
-      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": true, "edit": true, "addStudent": true, "bulkUpdate": true, "manageUsers": true, "editTimetable": true, "hallPass": true, "hallPassReview": true, "viewAwards": true, "postNotices": true, "refreshRoster": true, "viewAudit": true }
+      "label": "Head Staff",
+      "level": 0,
+      "description": "Edit students, manage teams and users, approve awards, post notices.",
+      "permissions": {
+        "view": true,
+        "viewTeams": true,
+        "editTeams": true,
+        "teamsAdmin": true,
+        "edit": true,
+        "addStudent": true,
+        "bulkUpdate": true,
+        "manageUsers": true,
+        "editTimetable": true,
+        "hallPass": true,
+        "hallPassReview": true,
+        "viewAwards": true,
+        "recommendAwards": true,
+        "approveAwards": true,
+        "postNotices": true,
+        "refreshRoster": true,
+        "viewAudit": true
+      }
     },
     "staff-gc": {
-      "label": "Staff - Grade Controller", "level": 0,
-      "description": "Edit students, edit teams, review hall passes.",
-      "permissions": { "view": true, "viewTeams": true, "editTeams": true, "teamsAdmin": false, "edit": true, "addStudent": true, "bulkUpdate": false, "manageUsers": false, "hallPass": true, "hallPassReview": true, "viewAwards": true }
+      "label": "Staff - Grade Controller",
+      "level": 0,
+      "description": "Edit students, edit teams, review hall passes, recommend awards.",
+      "permissions": {
+        "view": true,
+        "viewTeams": true,
+        "editTeams": true,
+        "teamsAdmin": false,
+        "edit": true,
+        "addStudent": true,
+        "bulkUpdate": false,
+        "manageUsers": false,
+        "hallPass": true,
+        "hallPassReview": true,
+        "viewAwards": true,
+        "recommendAwards": true
+      }
     },
     "staff-office": {
-      "label": "Staff - Office", "level": 0,
-      "description": "View students, teams and awards.",
-      "permissions": { "view": true, "viewTeams": true, "viewAwards": true }
+      "label": "Staff - Office",
+      "level": 0,
+      "description": "View students and teams; recommend awards.",
+      "permissions": {
+        "view": true,
+        "viewTeams": true,
+        "viewAwards": true,
+        "recommendAwards": true
+      }
     },
     "staff": {
-      "label": "Staff", "level": 2,
-      "description": "View students and teams; sign learners out on hall passes.",
-      "permissions": { "view": true, "viewTeams": true, "hallPass": true }
+      "label": "Staff",
+      "level": 2,
+      "description": "View students and teams; sign learners out on hall passes; recommend awards.",
+      "permissions": {
+        "view": true,
+        "viewTeams": true,
+        "hallPass": true,
+        "viewAwards": true,
+        "recommendAwards": true
+      }
     },
     "slt": {
-      "label": "SLT", "level": 1,
+      "label": "SLT",
+      "level": 1,
       "description": "Senior leadership: view students and teams.",
-      "permissions": { "view": true, "viewTeams": true }
+      "permissions": {
+        "view": true,
+        "viewTeams": true
+      }
     }
   }
 }
