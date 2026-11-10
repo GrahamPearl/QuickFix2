@@ -26,7 +26,10 @@
         "postNotices": true,
         "refreshRoster": true,
         "viewAudit": true,
-        "publishSnapshot": true
+        "publishSnapshot": true,
+        "examImport": true,
+        "examSeating": true,
+        "markConcession" : true
       }
     },
     "staff-head": {
@@ -50,7 +53,10 @@
         "approveAwards": true,
         "postNotices": true,
         "refreshRoster": true,
-        "viewAudit": true
+        "viewAudit": true,
+        "examImport": true,
+        "examSeating": true,
+        "markConcession" : true
       }
     },
     "staff-gc": {
@@ -69,7 +75,10 @@
         "hallPass": true,
         "hallPassReview": true,
         "viewAwards": true,
-        "recommendAwards": true
+        "recommendAwards": true,
+        "examImport": true,
+        "examSeating": true,
+        "markConcession" : true
       }
     },
     "staff-office": {

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Finals Seating</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/seating-class.css" />
+  <link rel="stylesheet" href="css/seating-lsu.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Finals Seating</h1>
+        <p class="site-subtitle">GRADE 12 · BY EXAM NUMBER AND SUBJECT</p>
+      </div>
+      <div class="header-spacer"></div>
+      <a href="index.html" class="staff-link">&larr; Dashboard</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner" aria-hidden="true"></span><span>Checking your access…</span></div>
+
+    <div id="app" class="is-hidden">
+
+      <section class="panel">
+        <h2 class="panel-title">1. Session &amp; subject</h2>
+        <div class="form-grid">
+          <div><label for="yearIn">Exam year</label><input type="number" id="yearIn" min="2000" max="2100" value="2027" /></div>
+          <div><label for="subjectSel">Subject</label><select id="subjectSel"></select></div>
+          <div><label for="groupSel">Venue group</label>
+            <select id="groupSel">
+              <option value="all">All candidates</option>
+              <option value="std">Standard venue (concessions removed)</option>
+              <option value="only">Concession venue (concessions only)</option>
+            </select></div>
+          <div><label for="typeSel">Concession type</label>
+            <select id="typeSel" disabled></select></div>
+          <div><label for="venueIn">Venue name (unique)</label>
+            <input type="text" id="venueIn" placeholder="e.g. Hall — Maths P1" maxlength="60" autocomplete="off" /></div>
+          <div><label for="sessionIn">Session (optional)</label>
+            <input type="text" id="sessionIn" placeholder="e.g. Finals 2027 · 3 Nov · 09:00" maxlength="80" autocomplete="off" /></div>
+          <div class="span-all">
+            <label for="venueSel">Saved venues</label>
+            <div class="inline-row">
+              <select id="venueSel"></select>
+              <button type="button" id="loadVenueBtn" class="btn">Load</button>
+            </div>
+            <p id="venueMsg" class="plan-msg"></p>
+          </div>
+        </div>
+        <p id="loadMsg" class="plan-msg"></p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-row">
+          <h2 class="panel-title">2. Candidates <span id="candCount" class="empty-hint"></span></h2>
+          <div class="btn-row">
+            <button type="button" id="selAllBtn" class="btn btn-ghost">Select all</button>
+            <button type="button" id="selNoneBtn" class="btn btn-ghost">Select none</button>
+          </div>
+        </div>
+        <p class="empty-hint">Untick absent candidates, then press <strong>Re-seat everyone</strong>. Candidates are seated in exam-number order.</p>
+        <div class="cand-wrap"><table>
+          <thead><tr><th style="width:44px"></th><th>Exam No</th><th>Name</th><th>Class</th><th>Admin No</th></tr></thead>
+          <tbody id="candBody"></tbody></table></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">3. Room layout (S-snake)</h2>
+        <div class="layout-row">
+          <div><label for="colsIn">Columns (desks across)</label><input type="number" id="colsIn" min="1" max="30" value="6" /></div>
+          <div><label for="rowsIn">Rows (desks front to back)</label><input type="number" id="rowsIn" min="1" max="30" value="6" /></div>
+          <button type="button" id="fitBtn" class="btn btn-ghost">Auto-fit columns</button>
+          <button type="button" id="generateBtn" class="btn btn-primary">Re-seat everyone</button>
+        </div>
+        <p id="planMsg" class="plan-msg"></p>
+      </section>
+
+      <section class="panel">
+        <div class="panel-row">
+          <h2 class="panel-title">4. Seating grid</h2>
+          <span class="empty-hint">Click a seated candidate to remove · click a name below, then an empty desk, to place</span>
+        </div>
+        <div class="grid-scroll"><div id="seatGrid" class="seat-grid"></div></div>
+        <h3 class="pool-title">Unassigned <span id="poolBadge" class="badge badge-muted">0</span></h3>
+        <div id="pool" class="pool"></div>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">5. Save &amp; export</h2>
+        <div class="btn-row">
+          <button type="button" id="saveBtn" class="btn btn-primary">Save venue</button>
+          <span class="sep"></span>
+          <button type="button" id="downloadBtn" class="btn">Download plan (PNG)</button>
+          <button type="button" id="printBtn" class="btn">Print plan</button>
+          <button type="button" id="registerBtn" class="btn">Print register</button>
+        </div>
+        <p id="exportMsg" class="plan-msg"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/seating-finals.js"></script>
+</body>
+</html>

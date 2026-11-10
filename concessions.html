@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Concessions</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Concessions</h1>
+        <p class="site-subtitle">GRADES 8–12 · TYPES · EXPORT</p>
+      </div>
+      <div class="header-spacer"></div>
+      <a href="index.html" class="staff-link">&larr; Dashboard</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+
+      <section class="panel">
+        <h2 class="panel-title" id="oneTitle">1. Add or edit one learner</h2>
+        <label for="stuSearch">Learner</label>
+        <input type="text" id="stuSearch" placeholder="Name or admin number…" autocomplete="off" />
+        <div id="stuMatches"></div>
+        <p id="stuPicked" class="empty-hint">No learner selected.</p>
+        <div class="imp-row" id="typeBox"></div>
+        <label for="noteIn">Note (optional)</label>
+        <input type="text" id="noteIn" maxlength="200" autocomplete="off" placeholder="Practical detail only, e.g. 25% extra time" />
+        <div class="imp-row">
+          <button type="button" id="saveOneBtn" class="btn btn-primary">Save concession</button>
+          <button type="button" id="clearOneBtn" class="btn btn-ghost">Clear</button>
+        </div>
+        <p id="oneMsg" class="plan-msg"></p>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">2. Bulk add</h2>
+        <p class="empty-hint">Paste admin numbers (commas, spaces or new lines) <strong>or</strong> upload an Excel/CSV file with
+          <strong>ADMNO</strong> and optional <strong>TYPE</strong> (e.g. “Extra time; Reader”) and <strong>NOTE</strong> columns.
+          Rows without a TYPE use the types ticked below.</p>
+        <textarea id="bulkIn" rows="3" placeholder="15332, 14944, 15216…"></textarea>
+        <div class="imp-row" id="bulkTypeBox"></div>
+        <div class="imp-row">
+          <select id="bulkMode"><option value="add">Add to existing types</option><option value="replace">Replace existing types</option></select>
+          <button type="button" id="bulkAddBtn" class="btn btn-primary">Apply to pasted list</button>
+          <button type="button" id="bulkDelBtn" class="btn">Remove pasted list</button>
+          <input type="file" id="bulkFile" accept=".xlsx,.xls,.csv" />
+        </div>
+        <p id="bulkMsg" class="plan-msg"></p>
+      </section>
+
+      <section class="panel">
+        <h2 class="panel-title">3. Concession list <span id="listCount" class="empty-hint"></span></h2>
+        <div class="imp-row">
+          <select id="fGrade"></select>
+          <select id="fType"></select>
+          <input type="text" id="fText" placeholder="Filter by name or admin no…" />
+          <button type="button" id="refreshBtn" class="btn btn-ghost">Refresh</button>
+        </div>
+        <div class="imp-row">
+          <button type="button" id="xlsxBtn" class="btn btn-primary">Export Excel</button>
+          <button type="button" id="csvBtn" class="btn">Export CSV</button>
+          <label class="imp-inline"><input type="checkbox" id="perGrade" /> Excel: one sheet per grade</label>
+          <span class="empty-hint">Exports exactly what the filters above show.</span>
+        </div>
+        <div class="table-wrap imp-scroll">
+          <table>
+            <thead><tr><th>Admin No</th><th>Learner</th><th>Gr / Class</th><th>Types</th><th>Note</th><th></th></tr></thead>
+            <tbody id="listBody"></tbody>
+          </table>
+        </div>
+        <p id="listMsg" class="plan-msg"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/concessions.js"></script>
+</body>
+</html>

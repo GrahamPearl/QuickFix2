@@ -14,6 +14,29 @@ window.APP_CONFIG = {
   //   "https://raw.githubusercontent.com/<org>/<repo>/main/photos/"
   // Example (Firebase Storage, public bucket):
   //   "https://storage.googleapis.com/<bucket-name>/photos/"
+  
+  // Firestore project config (safe to expose client-side; access is
+  // controlled by Firestore Security Rules, not by hiding this).
+  FIREBASE_CONFIG: {
+    apiKey: "AIzaSyDcKn9snvMN9TJSK9XMNXz2cULHhw7DxdE",
+    authDomain: "hhs-students.firebaseapp.com",
+    projectId: "hhs-students",
+    storageBucket: "hhs-students.firebasestorage.app",
+    messagingSenderId: "217061577342",
+    appId: "1:217061577342:web:1fba3deb2936325471be2f",
+    measurementId: "G-BZ6YMV107L",
+  },
+
+  ALLOCATION_BATCHES_COLLECTION: "allocation-batches",
+  AUDIT_COLLECTION: "audit-log",
+  AWARDS_RECOMMENDATIONS_COLLECTION: "awards-recommendations",
+  CONCESSIONS_COLLECTION: "concessions",
+  SNAPSHOT_COLLECTION: "rosterSnapshot",
+  STUDENTS_COLLECTION: "students",
+  TEAMS_COLLECTION: "teams",  
+  USAGE_COLLECTION: "usage-daily",
+  USAGE_SUMMARY_COLLECTION: "usage-summary",
+
   IMAGE_BASE_URL: "https://grahampearl.github.io/hhs_lookup/photos/",
 
   // Shown when a student has no photo on file, or the image 404s.
@@ -28,32 +51,13 @@ window.APP_CONFIG = {
     "Awarded SA",
     "Enrichment",
   ],
-  TEAMS_COLLECTION: "teams",
-  AWARDS_RECOMMENDATIONS_COLLECTION: "awards-recommendations",
-  // Firestore project config (safe to expose client-side; access is
-  // controlled by Firestore Security Rules, not by hiding this).
-  FIREBASE_CONFIG: {
-    apiKey: "AIzaSyDcKn9snvMN9TJSK9XMNXz2cULHhw7DxdE",
-    authDomain: "hhs-students.firebaseapp.com",
-    projectId: "hhs-students",
-    storageBucket: "hhs-students.firebasestorage.app",
-    messagingSenderId: "217061577342",
-    appId: "1:217061577342:web:1fba3deb2936325471be2f",
-    measurementId: "G-BZ6YMV107L",
-  },
-
   // Firestore collection holding one document per student, keyed by adminNo.
-  STUDENTS_COLLECTION: "students",
+  
   CLASS_TIMETABLE_GRADES: [8, 9],
 
   // How long the in-browser student cache stays fresh before a
   // silent Firestore re-fetch (keeps read costs down; see js/students.js).
   CACHE_TTL_MS: 30 * 60 * 1000,
-  ALLOCATION_BATCHES_COLLECTION: "allocation-batches",
   
-  SNAPSHOT_COLLECTION: "rosterSnapshot",
   SNAPSHOT_SPLIT_GRADES: [], // e.g. [10, 11, 12] if a chunk nears 1 MiB (see the health tab)
-  AUDIT_COLLECTION: "audit-log",
-  USAGE_COLLECTION: "usage-daily",
-  USAGE_SUMMARY_COLLECTION: "usage-summary",
 };

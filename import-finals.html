@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Import Finals Candidates</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Import Finals Candidates</h1>
+        <p class="site-subtitle">ADMIN NO ↔ EXAM NO · EXCEL → FIREBASE</p>
+      </div>
+      <div class="header-spacer"></div>
+      <a href="index.html" class="staff-link">&larr; Dashboard</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+
+      <section class="panel">
+        <h2 class="panel-title">1. Load spreadsheet</h2>
+        <p class="empty-hint">One row per candidate with two columns: <strong>ADMNO</strong> and <strong>EXAMNO</strong>
+          (also accepted: Admin No, Exam No, Candidate No). Every worksheet with these headers is read.</p>
+        <div class="imp-row">
+          <input type="file" id="fileIn" accept=".xlsx,.xls,.csv" />
+          <label class="imp-inline">Exam year <input type="number" id="yearIn" min="2000" max="2100" value="2027" /></label>
+        </div>
+        <p id="loadMsg" class="empty-hint"></p>
+      </section>
+
+      <section class="panel is-hidden" id="reviewPanel">
+        <h2 class="panel-title">2. Review <span id="sumCount" class="empty-hint"></span></h2>
+        <div class="imp-row">
+          <input type="text" id="rowFilter" placeholder="Filter by name, admin no or exam no…" />
+          <label class="imp-inline"><input type="checkbox" id="errOnly" /> Problems only</label>
+          <label class="imp-inline"><input type="checkbox" id="allowOver" /> Allow overwriting existing links</label>
+        </div>
+        <div class="table-wrap imp-scroll">
+          <table>
+            <thead><tr><th>Sheet</th><th>Admin No</th><th>Learner</th><th>Gr / Class</th><th>Exam No</th><th>Status</th></tr></thead>
+            <tbody id="revBody"></tbody>
+          </table>
+        </div>
+        <button type="button" id="importBtn" class="btn btn-primary" disabled>Import to Firebase</button>
+        <progress id="prog" class="is-hidden" value="0" max="1"></progress>
+        <p id="importMsg" class="plan-msg"></p>
+      </section>
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/import-finals.js"></script>
+</body>
+</html>
