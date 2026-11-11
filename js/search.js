@@ -81,9 +81,11 @@ export function filterStudents(students, state) {
 }
 
 /** Sort by surname then first name, for a stable, predictable list order. */
+const collator = new Intl.Collator(undefined, { sensitivity: "base" });
 export function sortStudents(students) {
-  return [...students].sort((a, b) =>
-    normalize(a.lastName).localeCompare(normalize(b.lastName)) ||
-    normalize(a.firstName).localeCompare(normalize(b.firstName)),
+  return [...students].sort(
+    (a, b) =>
+      collator.compare(a.lastName || "", b.lastName || "") ||
+      collator.compare(a.firstName || "", b.firstName || ""),
   );
 }

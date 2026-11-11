@@ -38,6 +38,8 @@ window.APP_CONFIG = {
   USAGE_SUMMARY_COLLECTION: "usage-summary",
 
   IMAGE_BASE_URL: "https://grahampearl.github.io/hhs_lookup/photos/",
+  THUMB_BASE_URL: "https://grahampearl.github.io/hhs_lookup/photos/thumb/",
+  PHOTO_VERSION: "2026-11",
 
   // Shown when a student has no photo on file, or the image 404s.
   FALLBACK_IMAGE: "assets/no-photo.svg",
@@ -57,7 +59,6 @@ window.APP_CONFIG = {
 
   // How long the in-browser student cache stays fresh before a
   // silent Firestore re-fetch (keeps read costs down; see js/students.js).
-  CACHE_TTL_MS: 30 * 60 * 1000,
   
   SNAPSHOT_SPLIT_GRADES: [], // e.g. [10, 11, 12] if a chunk nears 1 MiB (see the health tab)
 };

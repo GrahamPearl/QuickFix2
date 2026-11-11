@@ -462,7 +462,7 @@ async function renderCanvas() {
   if (!venue) throw new Error("Enter a venue name first.");
   const stage = document.createElement("div");
   stage.className = "export-stage";
-  const sub = [$("sessionIn").value.trim(), `${placed} learners`, new Date().toLocaleDateString()].filter(Boolean).join(" · ");
+  const sub = [$("sessionIn").value.trim(), `${placed} learners`].filter(Boolean).join(" · ");
   stage.innerHTML = `<div class="ex-title">${esc(venue)}</div>
     <div class="ex-sub">${esc(sub)}</div><div class="ex-front">FRONT OF ROOM</div>
     <div class="seat-grid" style="grid-template-columns:repeat(${S.cols},var(--seat-w))">${S.seats.map((s, i) => seatHtml(s, i, true)).join("")}</div>`;

@@ -558,8 +558,8 @@ tbody td {
   .results-meta,
   .drawer,
   .scrim,
-  #authWidget {
-    display: none !important;
+  #authWidget, #moreWrap, #lastLoaded, #refreshRosterBtn {
+    display: none !important 
   }
 
   /* Ensure only the grid cards print cleanly */
@@ -764,3 +764,9 @@ body.is-locked #printCardsBtn { display: none !important; }
 .tt-meta-info { font-size: .8rem; color: var(--text-muted); align-self: center; }
 .tt-cell-text { width: 100%; min-width: 120px; text-align: left; padding: 6px 8px; }
 #ttClassSelect { width: auto; margin-top: 6px; margin-left: 6px; }
+
+.card-name { display: block; margin-top: 8px; }
+.card-admin { display: block; }
+.more-wrap { display: flex; gap: 12px; align-items: center; justify-content: center; padding: 18px 0; }
+.more-wrap.is-hidden { display: none; }
+#lastLoaded.is-stale { color: var(--maroon); font-weight: 600; }

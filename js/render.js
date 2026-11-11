@@ -2,9 +2,25 @@
  * render.js
  * All DOM-building lives here, kept separate from data/search logic.
  */
-const { IMAGE_BASE_URL, FALLBACK_IMAGE } = window.APP_CONFIG;
+
+const {
+  IMAGE_BASE_URL,
+  THUMB_BASE_URL,
+  PHOTO_VERSION = "",
+  FALLBACK_IMAGE,
+} = window.APP_CONFIG;
 import { escapeHtml } from "./html.js";
 const esc = escapeHtml;
+const ver = PHOTO_VERSION ? `?v=${encodeURIComponent(PHOTO_VERSION)}` : "";
+
+export function photoUrl(filename) {
+  if (!filename) return FALLBACK_IMAGE;
+  return IMAGE_BASE_URL + encodeURI(filename) + ver;
+}
+export function thumbUrl(filename) {
+  if (!filename) return FALLBACK_IMAGE;
+  return (THUMB_BASE_URL || IMAGE_BASE_URL) + encodeURI(filename) + ver;
+}
 
 export function photoUrl(filename) {
   if (!filename) return FALLBACK_IMAGE;
@@ -17,15 +33,24 @@ document.addEventListener(
   (ev) => {
     const img = ev.target;
     if (!(img instanceof HTMLImageElement) || !img.dataset.initials) return;
+    if (
+      img.dataset.full &&
+      !img.dataset.triedFull &&
+      img.src !== img.dataset.full
+    ) {
+      img.dataset.triedFull = "1";
+      img.src = img.dataset.full;
+      return;
+    }
     const span = document.createElement("span");
     span.className = img.dataset.fallbackClass || "avatar-fallback";
     span.textContent = img.dataset.initials;
     img.replaceWith(span);
   },
-  true, // error events don't bubble, so listen in the capture phase
+  true,
 );
 
-function openPhotoModal(imageUrl) {
+export function openPhotoModal(imageUrl) {
   const existing = document.getElementById("photoZoomModal");
   if (existing) existing.remove();
 
@@ -79,8 +104,9 @@ export function renderRow(student) {
   tr.innerHTML = `
     <td class="cell-photo">
       <div class="avatar">
-        <img src="${esc(photoUrl(student.photo))}" alt="" loading="lazy"
-             data-initials="${esc(initials(student))}" />
+        <img src="${esc(thumbUrl(student.photo))}" data-full="${esc(photoUrl(student.photo))}" alt=""
+     loading="lazy" decoding="async" width="44" height="44"
+     data-initials="${esc(initials(student))}" />
       </div>
     </td>
     <td class="cell-name">
@@ -98,8 +124,8 @@ export function renderRow(student) {
   return tr;
 }
 
-export function renderRows(tbody, students) {
-  tbody.innerHTML = "";
+export function renderRows(tbody, students, { append = false } = {}) {
+  if (!append) tbody.innerHTML = "";
   const frag = document.createDocumentFragment();
   students.forEach((s) => frag.appendChild(renderRow(s)));
   tbody.appendChild(frag);
@@ -111,44 +137,20 @@ export function renderCard(student) {
   card.type = "button";
   card.className = "student-card";
   card.dataset.adminNo = student.adminNo;
-
-  const imageUrl = photoUrl(student.photo);
-
-   card.innerHTML = `
-    <div class="avatar avatar-card"
-         style="width: 90px; height: 120px; overflow: hidden; margin: 0 auto;">
-      <img
-        class="student-photo-preview"
-        src="${esc(imageUrl)}"
-        alt=""
-        loading="lazy"
-        data-full-image="${esc(imageUrl)}"
-        data-initials="${esc(initials(student))}"
-        style="width: 150%; height: 150%; object-fit: cover; cursor: zoom-in;"
-      />
+  card.innerHTML = `
+    <div class="avatar avatar-card">
+      <img class="student-photo-preview" src="${esc(thumbUrl(student.photo))}"
+           data-full="${esc(photoUrl(student.photo))}" data-initials="${esc(initials(student))}"
+           alt="" loading="lazy" decoding="async" width="90" height="120" />
     </div>
-
-    <span class="card-name" style="display:block; margin-top:8px;">
-      ${esc(student.firstName)} ${esc(student.lastName)}
-    </span>
-    <span class="card-admin mono" style="display: block;">${esc(student.registrationClass)}</span>
-    <span class="card-admin mono" style="display: block;">${esc(student.adminNo)}</span>
-  `;
-
-  const img = card.querySelector(".student-photo-preview");
-
-  img?.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    openPhotoModal(imageUrl); // <--- Updated here
-  });
-
+    <span class="card-name">${esc(student.firstName)} ${esc(student.lastName)}</span>
+    <span class="card-admin mono">${esc(student.registrationClass)}</span>
+    <span class="card-admin mono">${esc(student.adminNo)}</span>`;
   return card;
 }
 
-export function renderCards(container, students) {
-  container.innerHTML = "";
+export function renderCards(container, students, { append = false } = {}) {
+  if (!append) container.innerHTML = "";
   const frag = document.createDocumentFragment();
   students.forEach((s) => frag.appendChild(renderCard(s)));
   container.appendChild(frag);
@@ -207,7 +209,7 @@ export function renderEmptyState(tbody, colSpan) {
 }
 
 export function renderDrawerHeader(student) {
-    return `
+  return `
     <div class="avatar avatar-lg">
       <img src="${esc(photoUrl(student.photo))}" alt=""
            data-initials="${esc(initials(student))}"

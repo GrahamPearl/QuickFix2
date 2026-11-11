@@ -9,9 +9,9 @@ import { loadNotices, postNotice, removeNotice, visibleNotices } from "./notices
 import { getRosterSettings, requestRosterRefresh, estimateRefreshCost, DAILY_READ_QUOTA } from "./settings-service.js";
 import { escapeHtml as esc } from "./html.js";
 
+let cfg = null, me = null, seq = 0;
 const $ = (id) => document.getElementById(id);
 const say = (id, t, c = "") => { $(id).className = `plan-msg ${c}`; $(id).textContent = t; };
-let cfg = null, me = null, seq = 0;
 
 /* ---------- sign in ---------- */
 const AUTH_ERRORS = {
@@ -30,10 +30,10 @@ $("rosterBtn").addEventListener("click", async () => {
   $("rosterBtn").disabled = true;
   say("rosterMsg", "Estimating cost…", "");
   try {
-    const { students, users, reads } = await estimateRefreshCost(cfg.collection);
+    const { users, perLoad, reads } = await estimateRefreshCost(cfg.collection);
     const pct = Math.round((reads / DAILY_READ_QUOTA) * 100);
-    const detail = `${users} users × ${perLoad} reads each ≈ ${reads.toLocaleString()} reads (about ${pct.perLoad}% of the free daily quota of ${DAILY_READ_QUOTA.toLocaleString()}).`;
-
+    const detail = `${users} users × ${perLoad} reads each ≈ ${reads.toLocaleString()} reads (about ${pct}% of the free daily quota of ${DAILY_READ_QUOTA.toLocaleString()}).`;
+    
     if (urgent && pct >= 50) {
       const typed = prompt(`${detail}\n\nAn urgent refresh could use up today's quota and lock everyone out until the daily reset (about 10:00 SA time).\n\nType REFRESH to continue.`);
       if ((typed || "").trim() !== "REFRESH") return say("rosterMsg", "Cancelled.", "");

@@ -1,0 +1,17 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json", "**/.*", "**/node_modules/**", "scripts/**", "markdowns/**",
+      "**/*.rules", "firestore_rules.md", "js/set-claims.js", "**/serviceAccountKey.json"
+    ],
+    "headers": [
+      { "source": "**/*.@(html|js|css|json)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }] },
+      { "source": "photos/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }] },
+      { "source": "assets/**",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=2592000" }] }
+    ]
+  }
+}

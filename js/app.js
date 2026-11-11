@@ -22,6 +22,7 @@ import {
   patchCachedStudent,
   patchCachedStudents,
   addCachedStudent,
+  getRosterMeta,
 } from "./data-service.js";
 
 import { filterStudents, sortStudents } from "./search.js";
@@ -45,6 +46,7 @@ import {
   renderBulkUpdateModal,
   renderTeamRow,
   renderActiveFilters,
+  openPhotoModal,
 } from "./render.js";
 
 import {
@@ -96,6 +98,12 @@ const els = {
   addStudentModalBtn: document.getElementById("addStudentModalBtn"),
   openBulkUpdateBtn: document.getElementById("openBulkUpdateBtn"),
 
+  moreWrap: document.getElementById("moreWrap"),
+  showMoreBtn: document.getElementById("showMoreBtn"),
+  moreInfo: document.getElementById("moreInfo"),
+  lastLoaded: document.getElementById("lastLoaded"),
+  refreshRosterBtn: document.getElementById("refreshRosterBtn"),
+
   authForm: document.getElementById("authForm"),
   authEmail: document.getElementById("authEmail"),
   authPassword: document.getElementById("authPassword"),
@@ -144,7 +152,46 @@ function applyRoster(raw) {
   populateSelect(els.line, collectLines(roster), "All lines");
   refreshClassOptions();
   refreshTeacherOptions();
+  showLoaded();
 }
+
+function showLoaded() {
+  const m = getRosterMeta();
+  if (!m) { els.lastLoaded.textContent = ""; return; }
+  const mins = Math.floor((Date.now() - m.loadedAt) / 60000);
+  const ago = mins < 1 ? "just now" : mins < 60 ? `${mins} min ago` : `${Math.floor(mins / 60)} h ago`;
+  els.lastLoaded.textContent =
+    `Data loaded ${new Date(m.loadedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (${ago})`;
+  els.lastLoaded.classList.toggle("is-stale", mins >= 360); // 6 h
+}
+setInterval(showLoaded, 60000);
+
+const MANUAL_COOLDOWN_MS = 5 * 60 * 1000;
+let lastManual = 0;
+
+els.refreshRosterBtn.addEventListener("click", async () => {
+  const wait = MANUAL_COOLDOWN_MS - (Date.now() - lastManual);
+  if (wait > 0) {
+    alert(`Data was refreshed moments ago. Try again in ${Math.ceil(wait / 60000)} min.`);
+    return;
+  }
+  if (getRosterMeta()?.source === "students" &&
+      !confirm("The roster snapshot is not published, so this reads every student (about 2,000 reads). Continue?")) return;
+
+  els.refreshRosterBtn.disabled = true;
+  els.refreshRosterBtn.textContent = "Refreshing…";
+  try {
+    await loadRoster({ forceRefresh: true });
+    await loadAvailableTeams({ forceRefresh: true });
+    lastManual = Date.now();
+    runSearch();
+  } catch (err) {
+    alert(`Could not refresh: ${err.message}`);
+  } finally {
+    els.refreshRosterBtn.disabled = false;
+    els.refreshRosterBtn.textContent = "Refresh data";
+  }
+});
 
 /** Field-path updates for enrollments: only what changed, so stored extras (grade, class…) survive. */
 function enrollmentFields(before, after) {
@@ -393,11 +440,13 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  if (user.uid !== previousUid) {
-    if (!(await loadAll())) return;
-  }
+   if (user.uid !== previousUid) {
+     if (!(await loadAll())) return;
+     const q = new URLSearchParams(location.search).get("q");
+     if (q) els.query.value = q;
+   }
 
-  runSearch();
+   runSearch();
 });
 
 function focusLogin() {
@@ -411,41 +460,45 @@ async function loadRoster({ forceRefresh = false } = {}) {
   applyRoster(students);
 }
 
+const PAGE_SIZE = 25;
+let results = [];
+let shown = PAGE_SIZE;
+
 function runSearch() {
   if (!currentUser) return;
-
   updateFilterBadge();
 
-  let results = sortStudents(filterStudents(roster, state()));
-
+  let r = sortStudents(filterStudents(roster, state()));
   const selectedLine = els.line ? els.line.value : "";
   if (selectedLine) {
-    results = results.filter((student) => {
-      if (!student.enrollments) return false;
-      return Object.values(student.enrollments).some(
-        (enr) => String(enr.line) === String(selectedLine),
-      );
-    });
+    r = r.filter((s) =>
+      s.enrollments && Object.values(s.enrollments).some((e) => String(e.line) === String(selectedLine)));
   }
+  results = r;
+  shown = PAGE_SIZE; // every new search starts at page 1
 
   renderResultCount(els.resultCount, results.length, roster.length);
   const { term, field, ...filters } = state();
   renderActiveFilters(document.getElementById("activeFilters"), filters);
+  paint();
+}
 
-  if (results.length === 0) {
-    if (currentLayout === "list") {
-      renderEmptyState(els.tbody, COL_COUNT);
-    } else {
-      renderEmptyCards(els.resultsGrid);
-    }
+function paint() {
+  if (!results.length) {
+    currentLayout === "list" ? renderEmptyState(els.tbody, COL_COUNT) : renderEmptyCards(els.resultsGrid);
+    updateMore();
     return;
   }
+  const page = results.slice(0, shown);
+  currentLayout === "list" ? renderRows(els.tbody, page) : renderCards(els.resultsGrid, page);
+  updateMore();
+}
 
-  if (currentLayout === "list") {
-    renderRows(els.tbody, results);
-  } else {
-    renderCards(els.resultsGrid, results);
-  }
+function updateMore() {
+  const left = Math.max(0, results.length - shown);
+  els.moreWrap.classList.toggle("is-hidden", left === 0);
+  els.showMoreBtn.textContent = `Show ${Math.min(PAGE_SIZE, left)} more`;
+  els.moreInfo.textContent = `Showing ${Math.min(shown, results.length)} of ${results.length}`;
 }
 
 async function loadAvailableTeams({ forceRefresh = false } = {}) {
@@ -672,9 +725,20 @@ function debounce(fn, ms) {
 }
 
 async function wireEvents() {
-  els.resultsGrid.addEventListener("click", (e) => {
+   els.resultsGrid.addEventListener("click", (e) => {
+    const photo = e.target.closest(".student-photo-preview");
+    if (photo) { e.preventDefault(); openPhotoModal(photo.dataset.full); return; }
     const card = e.target.closest(".student-card");
     if (card) openDrawer(card.dataset.adminNo);
+  });
+
+  els.showMoreBtn.addEventListener("click", () => {
+    const next = results.slice(shown, shown + PAGE_SIZE);
+    shown += PAGE_SIZE;
+    currentLayout === "list"
+      ? renderRows(els.tbody, next, { append: true })
+      : renderCards(els.resultsGrid, next, { append: true });
+    updateMore();
   });
 
   document.getElementById("activeFilters").addEventListener("click", (e) => {
@@ -761,6 +825,9 @@ async function wireEvents() {
   });
 
   els.printCardsBtn.addEventListener("click", async () => {
+    renderCards(els.resultsGrid, results); // print needs all cards, not just the visible page
+    window.addEventListener("afterprint", () => { shown = PAGE_SIZE; paint(); }, { once: true });
+
     const images = els.resultsGrid.querySelectorAll("img");
 
     if (images.length === 0) {
