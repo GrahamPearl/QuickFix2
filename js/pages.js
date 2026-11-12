@@ -14,6 +14,7 @@ export const PAGES = [
   { group: "Students", label: "Awards", href: "awards.html", perm: "viewAwards", desc: "Recommend and review awards." },
   { group: "Students", label: "Memory game", href: "memory-game.html", perm: "playMemoryGame", desc: "Match learner photos to names. Weekly leaderboard." },
   { group: "Classroom", label: "Hall passes", href: "hallpass.html", perm: "hallPass", desc: "Sign learners out and back in." },
+  { group: "Classroom", label: "Behaviour", href: "behaviour.html", perm: "addBehaviour", desc: "Record uniform infringements, merits, incidents; detention register." },
   { group: "Classroom", label: "Grade 8–9 seating", href: "seating-class.html", perm: "view", desc: "Seating plans by registration class." },
   { group: "Classroom", label: "Grade 10–11 seating", href: "seating-teacher.html", perm: "view", desc: "Seating plans by subject and teacher." },
   { group: "Classroom", label: "Custom seating", href: "seating-lsu.html", perm: "view", desc: "Custom-venue seating." },

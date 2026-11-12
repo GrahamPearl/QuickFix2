@@ -192,5 +192,42 @@ service cloud.firestore {
     match /hallpass-index/{id} {
       allow read, write: if isHallStaff();
     }
+
+    match /concessions/{adminNo} {
+     allow read: if typeIn(['admin','staff-head','staff-gc']);
+     allow create, update: if typeIn(['admin','staff-head','staff-gc'])
+       && request.resource.data.adminNo == adminNo
+       && request.resource.data.types is list;
+     allow delete: if typeIn(['admin','staff-head','staff-gc']);
+   }
+
+   function memoryGameSeason() {
+  return exists(/databases/$(database)/documents/setting/memoryGame)
+    ? string(get(/databases/$(database)/documents/setting/memoryGame).data.get('season', 1))
+    : '1';
+}
+
+match /memory-game-seasons/{season}/scores/{uid} {
+  allow read: if canRead();
+  allow create, update: if canRead()
+    && uid == request.auth.uid
+    && season == memoryGameSeason()
+    && request.resource.data.keys().hasOnly(['uid','email','name','bestScore','bestTimeMs','bestCorrect',
+         'rounds','games','totalPlayMs','sortKey','updatedAt'])
+    && request.resource.data.uid == request.auth.uid
+    && request.resource.data.email == myEmail()
+    && request.resource.data.bestScore is int && request.resource.data.bestScore >= 0 && request.resource.data.bestScore <= 10000
+    && request.resource.data.bestTimeMs is int && request.resource.data.bestTimeMs >= 0 && request.resource.data.bestTimeMs <= 3600000
+    && request.resource.data.bestCorrect is int && request.resource.data.rounds is int
+    && request.resource.data.games is int && request.resource.data.games >= 1
+    && request.resource.data.totalPlayMs is int && request.resource.data.sortKey is int
+    && request.resource.data.updatedAt == request.time
+    && (resource == null || request.resource.data.bestScore >= resource.data.bestScore);
+  allow delete: if isAdminOrHead();
+}
+
+unction canAddBehaviour() { return typeIn(['admin','staff-head','staff-gc','staff','slt']); } function canManageBehaviour() { return typeIn(['admin','staff-head','staff-gc']); } function isBehaviourAdmin() { return typeIn(['admin','staff-head']); }
+
+match /behaviour-entries/{id} { allow read: if isBehaviourAdmin() || (typeIn(['staff-gc']) && resource.data.severity in ['minor','moderate']) || (canAddBehaviour() && resource.data.recordedBy == request.auth.uid && resource.data.recordedAt > request.time - duration.value(1, 'd')); allow create: if canAddBehaviour() && request.resource.data.recordedBy == request.auth.uid && request.resource.data.recordedByEmail == myEmail() && request.resource.data.recordedAt == request.time && request.resource.data.status == 'active' && request.resource.data.type in ['uniform','merit','demerit','incident'] && request.resource.data.severity in ['minor','moderate','serious'] && request.resource.data.adminNo.matches('[0-9]{5,6}') && request.resource.data.get('note','').size() <= 300; // void only: managers, and gc never on serious entries allow update: if canManageBehaviour() && (isBehaviourAdmin() || resource.data.severity != 'serious') && resource.data.status == 'active' && request.resource.data.status == 'voided' && request.resource.data.diff(resource.data).affectedKeys() .hasOnly(['status','voidedBy','voidedByEmail','voidedAt','voidedReason']); allow delete: if isBehaviourAdmin(); } match /detentions/{id} { allow read, create, update: if canManageBehaviour(); allow delete: if isBehaviourAdmin(); }
   }
 }

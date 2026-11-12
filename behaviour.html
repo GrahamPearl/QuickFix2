@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Behaviour</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+  <link rel="stylesheet" href="css/awards.css" />
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <div class="crest" aria-hidden="true">HHS</div>
+    <div><h1 class="site-title">Behaviour</h1><p class="site-subtitle">UNIFORM · MERITS · INCIDENTS · DETENTIONS</p></div>
+    <div class="header-spacer"></div><span id="userBadge" class="admin-badge is-hidden"></span>
+    <a href="index.html" class="staff-link">&larr; Dashboard</a>
+  </div></header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+      <div class="tab-row">
+        <button class="tab is-active" data-tab="capture">Record</button>
+        <button class="tab is-hidden" data-tab="ledger">Ledger</button>
+        <button class="tab is-hidden" data-tab="report">Frequency</button>
+        <button class="tab is-hidden" data-tab="detention">Detentions</button>
+      </div>
+
+      <section data-pane="capture">
+        <div class="panel">
+          <h2 class="panel-title">Record an event</h2>
+          <label for="stuSearch">Learner</label>
+          <input type="text" id="stuSearch" placeholder="Name or admin number…" autocomplete="off" />
+          <div id="stuMatches"></div>
+          <p id="stuPicked" class="empty-hint">No learner selected.</p>
+          <div class="form-grid">
+            <div><label for="fType">Type</label><select id="fType"></select></div>
+            <div><label for="fCat">Category</label><select id="fCat"></select></div>
+            <div><label for="fSev">Severity</label><select id="fSev"></select></div>
+            <div><label for="fDate">Date</label><input type="date" id="fDate" /></div>
+          </div>
+          <label for="fNote">Note (facts only, no medical details)</label>
+          <textarea id="fNote" rows="3" maxlength="300"></textarea>
+          <p id="capMsg" class="plan-msg"></p>
+          <button type="button" id="saveBtn" class="btn btn-primary">Save</button>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">My entries (last 24 hours)</h2>
+          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Learner</th><th>Type</th><th>Category</th><th>Status</th></tr></thead><tbody id="mineBody"></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="ledger">
+        <div class="imp-row">
+          <label class="imp-inline">From <input type="date" id="lFrom" /></label>
+          <label class="imp-inline">To <input type="date" id="lTo" /></label>
+          <select id="lType"></select>
+          <input type="text" id="lText" placeholder="Filter by name or admin no…" />
+          <button type="button" id="lLoad" class="btn btn-primary">Load</button>
+        </div>
+        <p id="lMsg" class="plan-msg"></p>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Date</th><th>Learner</th><th>Type</th><th>Category</th><th>Severity</th><th>Note</th><th>By</th><th></th></tr></thead><tbody id="lBody"></tbody></table></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="report">
+        <p class="empty-hint">Counts events per learner in the period loaded on the Ledger tab (no extra reads).</p>
+        <div class="imp-row">
+          <select id="rType"></select>
+          <label class="imp-inline">At least <input type="number" id="rMin" min="1" value="3" /> events</label>
+        </div>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Learner</th><th>Class</th><th>Events</th><th>By category</th></tr></thead><tbody id="rBody"></tbody></table></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="detention">
+        <h2 class="panel-title">Schedule detentions</h2>
+        <label for="dAdm">Admin numbers (commas, spaces or new lines)</label>
+        <textarea id="dAdm" rows="2"></textarea>
+        <div class="form-grid">
+          <div><label for="dDate">Date</label><input type="date" id="dDate" /></div>
+          <div><label for="dVenue">Venue</label><input type="text" id="dVenue" maxlength="60" /></div>
+          <div><label for="dReason">Reason</label><input type="text" id="dReason" maxlength="120" /></div>
+          <div><label for="dParent">Parent notified on</label><input type="date" id="dParent" /></div>
+        </div>
+        <button type="button" id="dSave" class="btn btn-primary">Schedule</button>
+        <p id="dMsg" class="plan-msg"></p>
+        <h2 class="panel-title" style="margin-top:18px">Register <button type="button" id="dLoad" class="btn btn-ghost">Refresh</button></h2>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Date</th><th>Learner</th><th>Venue</th><th>Reason</th><th>Status</th></tr></thead><tbody id="dBody"></tbody></table></div>
+      </section>
+    </div>
+  </main>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/behaviour-app.js"></script>
+</body>
+</html>

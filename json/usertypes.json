@@ -31,7 +31,11 @@
         "examSeating": true,
         "markConcession" : true,
         "playMemoryGame": true,
-        "manageMemoryGame": true
+        "manageMemoryGame": true,
+        "addBehaviour": true,
+        "viewBehaviour": true, 
+        "manageBehaviour": true,
+        "adminBehaviour": true  
       }
     },
     "staff-head": {
@@ -60,7 +64,11 @@
         "examSeating": true,
         "markConcession" : true,
         "playMemoryGame": true,
-        "manageMemoryGame": true
+        "manageMemoryGame": true,
+        "addBehaviour": true,
+        "viewBehaviour": true, 
+        "manageBehaviour": true,
+        "adminBehaviour": true
       }
     },
     "staff-gc": {
@@ -83,7 +91,10 @@
         "examImport": true,
         "examSeating": true,
         "markConcession" : true,
-        "playMemoryGame": true
+        "playMemoryGame": true,
+        "addBehaviour": true,
+        "viewBehaviour": true, 
+        "manageBehaviour": true
       }
     },
     "staff-office": {
@@ -106,7 +117,8 @@
         "viewTeams": true,
         "hallPass": true,
         "viewAwards": true,
-        "recommendAwards": true
+        "recommendAwards": true,
+        "addBehaviour": true
       }
     },
     "slt": {
@@ -115,7 +127,8 @@
       "description": "Senior leadership: view students and teams.",
       "permissions": {
         "view": true,
-        "viewTeams": true
+        "viewTeams": true,
+        "addBehaviour": true
       }
     }
   }
