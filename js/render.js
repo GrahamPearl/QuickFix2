@@ -22,10 +22,11 @@ export function thumbUrl(filename) {
   return (THUMB_BASE_URL || IMAGE_BASE_URL) + encodeURI(filename) + ver;
 }
 
-export function photoUrl(filename) {
+/*export function photoUrl(filename) {
   if (!filename) return FALLBACK_IMAGE;
   return IMAGE_BASE_URL + filename;
 }
+  */
 
 // Swaps a broken photo for the student's initials (replaces all inline onerror handlers).
 document.addEventListener(

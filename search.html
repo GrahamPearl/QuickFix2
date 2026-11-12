@@ -191,7 +191,11 @@
         <span id="lastLoaded" class="empty-hint"></span>
         <button type="button" id="refreshRosterBtn" class="btn btn-ghost">Refresh data</button>
         <button type="button" id="printCardsBtn" class="btn btn-ghost is-hidden">Print / Export PDF</button>
-        <div class="layout-toggle" role="group" aria-label="Result layout">… unchanged …</div>
+        <div class="layout-toggle" role="group" aria-label="Result layout">
+          <button type="button" class="layout-btn is-active" data-layout="list">List</button>
+          <button type="button" class="layout-btn" data-layout="grid2">2 cards</button>
+          <button type="button" class="layout-btn" data-layout="grid4">4 cards</button>
+        </div>
       </div>
     </div>
 
@@ -220,7 +224,7 @@
       <div id="resultsGrid" class="results-grid"></div>
     </div>
     <div id="moreWrap" class="more-wrap is-hidden">
-      <button type="button" id="showMoreBtn" class="btn">Show 25 more</button>
+      <button type="button" id="showMoreBtn" class="btn">Show 35 more</button>
       <span id="moreInfo" class="empty-hint"></span>
     </div>
   </main>

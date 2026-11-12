@@ -139,6 +139,10 @@ let currentUser = null;
 let userType = null;
 let userTypes = null;
 
+const PAGE_SIZE = 35;
+let results = [];
+let shown = PAGE_SIZE;
+
 function showAuthError(msg) {
   const el =
     document.getElementById("authError") ||
@@ -459,10 +463,6 @@ async function loadRoster({ forceRefresh = false } = {}) {
     : (await ensureFreshRoster()).students;
   applyRoster(students);
 }
-
-const PAGE_SIZE = 25;
-let results = [];
-let shown = PAGE_SIZE;
 
 function runSearch() {
   if (!currentUser) return;
@@ -806,30 +806,33 @@ async function wireEvents() {
       els.layoutBtns.forEach((b) => b.classList.remove("is-active"));
       btn.classList.add("is-active");
 
-      currentLayout = btn.dataset.layout;
+      currentLayout = btn.dataset.layout; // "list" | "grid2" | "grid4"
+      const isList = currentLayout === "list";
 
-      if (currentLayout === "list") {
-        els.tableWrap.classList.remove("is-hidden");
-        els.cardsWrap.classList.add("is-hidden");
-        els.printCardsBtn.classList.add("is-hidden");
+      els.tableWrap.classList.toggle("is-hidden", !isList);
+      els.cardsWrap.classList.toggle("is-hidden", isList);
+      els.printCardsBtn.classList.toggle("is-hidden", isList);
+
+      if (isList) {
+        els.resultsGrid.innerHTML = "";
       } else {
-        els.tableWrap.classList.add("is-hidden");
-        els.cardsWrap.classList.remove("is-hidden");
-        els.printCardsBtn.classList.remove("is-hidden");
-
+        els.tbody.innerHTML = "";
         els.resultsGrid.className = `results-grid ${currentLayout === "grid4" ? "grid-cols-4" : "grid-cols-2"}`;
       }
-
-      runSearch();
+      paint();
     });
   });
 
-  els.printCardsBtn.addEventListener("click", async () => {
-    renderCards(els.resultsGrid, results); // print needs all cards, not just the visible page
+    els.printCardsBtn.addEventListener("click", async () => {
+    if (!results.length) return;
+    if (results.length > 300 &&
+        !confirm(`Print all ${results.length} cards? This can take a while. Cancel and apply a filter to print fewer.`)) return;
+
+    // print needs every card, not just the visible page
+    renderCards(els.resultsGrid, results);
     window.addEventListener("afterprint", () => { shown = PAGE_SIZE; paint(); }, { once: true });
 
     const images = els.resultsGrid.querySelectorAll("img");
-
     if (images.length === 0) {
       window.print();
       return;
@@ -839,12 +842,8 @@ async function wireEvents() {
     els.printCardsBtn.disabled = true;
 
     const imageLoadPromises = Array.from(images).map((img) => {
-      img.loading = "eager";
-
-      if (img.complete && img.naturalHeight !== 0) {
-        return Promise.resolve();
-      }
-
+      img.loading = "eager"; // lazy images off-screen would otherwise print blank
+      if (img.complete && img.naturalHeight !== 0) return Promise.resolve();
       return new Promise((resolve) => {
         img.onload = resolve;
         img.onerror = resolve;

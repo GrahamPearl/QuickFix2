@@ -31,6 +31,7 @@ window.APP_CONFIG = {
   AUDIT_COLLECTION: "audit-log",
   AWARDS_RECOMMENDATIONS_COLLECTION: "awards-recommendations",
   CONCESSIONS_COLLECTION: "concessions",
+  MEMORY_GAME_COLLECTION: "memory-game-seasons",
   SNAPSHOT_COLLECTION: "rosterSnapshot",
   STUDENTS_COLLECTION: "students",
   TEAMS_COLLECTION: "teams",  

@@ -1,0 +1,49 @@
+/* memory-game.css — page styles for memory-game.html; palette and panels from style.css / admin-users.css */
+.grow { flex: 1; }
+.admin-badge.is-hidden { display: none; }
+.ok { color: #2f6b3a; font-weight: 600; } .warn { color: #b36b00; font-weight: 600; } .err { color: var(--maroon); font-weight: 600; }
+.plan-msg { margin: 10px 0 0; font-size: .88rem; }
+.plan-msg:empty { display: none; }
+.imp-row select { min-width: 220px; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.mg-me td { background: var(--gold-soft); font-weight: 600; }
+
+/* ---------- game ---------- */
+.mg-hud { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; font-size: 1rem; color: var(--ink); }
+.mg-streak { color: var(--maroon); font-weight: 700; }
+.mg-stage { display: grid; grid-template-columns: 240px 1fr; gap: 24px; align-items: start; }
+.mg-photo-wrap { position: relative; width: 240px; height: 320px; border-radius: var(--radius); overflow: hidden; background: var(--paper); border: 1px solid var(--line-strong); }
+.mg-photo { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; }
+.mg-photo.is-masked { visibility: hidden; }
+.mg-mask { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; font-family: var(--font-serif); font-size: 5rem; color: var(--ink-soft); background: var(--paper); }
+.mg-photo.is-masked + .mg-mask { display: flex; }
+
+.mg-timer { height: 12px; background: var(--line); border-radius: 999px; overflow: hidden; margin-bottom: 14px; }
+.mg-timer > i { display: block; height: 100%; width: 100%; background: var(--gold); }
+.mg-timer > i.is-low { background: var(--maroon); }
+
+.mg-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mg-opt { display: flex; align-items: center; gap: 12px; min-height: 72px; padding: 12px 14px; text-align: left; font: inherit; font-size: .95rem; font-weight: 600; color: var(--ink); background: #fff; border: 2px solid var(--line-strong); border-radius: var(--radius); cursor: pointer; }
+.mg-opt:hover:not(:disabled) { border-color: var(--gold); background: var(--paper); }
+.mg-opt:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.mg-opt:disabled { cursor: default; }
+.mg-key { flex: none; width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--ink); color: #fff; font-size: .8rem; }
+.mg-opt > span:nth-child(2) { flex: 1; }
+.mg-mark { margin-left: auto; font-size: .78rem; white-space: nowrap; }
+.mg-right { border-color: #2f6b3a; background: #dcefe0; }
+.mg-wrong { border-color: var(--maroon); background: #f3dcdc; }
+.mg-msg { min-height: 1.4em; margin: 14px 0 0; font-weight: 600; color: var(--ink); }
+
+.mg-result { text-align: center; }
+.mg-result .imp-row { justify-content: center; }
+.mg-big { font-family: var(--font-serif); font-size: 3.4rem; font-weight: 700; margin: 4px 0; color: var(--ink); }
+
+.mg-cfg { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 8px; }
+.mg-cfg input[type="number"], .imp-inline input[type="number"] { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; font: inherit; font-size: .92rem; background: #fff; color: var(--text); }
+.mg-cfg label { text-transform: none; letter-spacing: 0; font-size: .82rem; }
+
+@media (max-width: 700px) {
+  .mg-stage { grid-template-columns: 1fr; justify-items: center; }
+  .mg-side { width: 100%; }
+  .mg-opts { grid-template-columns: 1fr; }
+}

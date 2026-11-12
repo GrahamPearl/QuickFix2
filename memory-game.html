@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Memory Game</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+  <link rel="stylesheet" href="css/memory-game.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="crest" aria-hidden="true">HHS</div>
+      <div>
+        <h1 class="site-title">Memory Game</h1>
+        <p class="site-subtitle">MATCH THE FACE TO THE LEARNER</p>
+      </div>
+      <div class="header-spacer"></div>
+      <span id="userBadge" class="admin-badge is-hidden"></span>
+      <a href="index.html" class="staff-link">&larr; Dashboard</a>
+    </div>
+  </header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner" aria-hidden="true"></span><span>Checking your access…</span></div>
+
+    <div id="app" class="is-hidden">
+
+      <section class="panel">
+        <div class="panel-row">
+          <h2 class="panel-title" id="sessionInfo">Session</h2>
+          <button type="button" id="resetBtn" class="btn is-hidden">Start a new session</button>
+        </div>
+        <p id="sessionWarn" class="plan-msg warn is-hidden"></p>
+        <p id="ruleInfo" class="empty-hint"></p>
+      </section>
+
+      <section class="panel">
+        <div id="menuBox">
+          <h2 class="panel-title">Play</h2>
+          <p class="empty-hint">A photo appears with a few learner details. Pick the right ones before the timer runs out. Each round is shorter than the last. Keys 1 to 6 also work.</p>
+          <div class="imp-row">
+            <label class="imp-inline">Mode
+              <select id="modeSel">
+                <option value="ranked">Ranked (saved to the leaderboard)</option>
+                <option value="practice">Practice (not saved)</option>
+              </select>
+            </label>
+            <label class="imp-inline is-hidden" id="pracBox">Practise on
+              <select id="pracGrade"></select>
+            </label>
+            <button type="button" id="startBtn" class="btn btn-primary">Start game</button>
+          </div>
+          <p id="startMsg" class="plan-msg"></p>
+        </div>
+
+        <div id="gameBox" class="is-hidden">
+          <div class="mg-hud">
+            <strong id="hudRound"></strong>
+            <span id="hudScore"></span>
+            <span id="hudStreak" class="mg-streak"></span>
+            <span class="grow"></span>
+            <button type="button" id="quitBtn" class="btn btn-ghost">Quit</button>
+          </div>
+          <div class="mg-stage">
+            <div id="mgLoading" class="loading-state is-hidden"><span class="spinner" aria-hidden="true"></span><span>Loading the next photo…</span></div>
+            <div id="photoWrap" class="mg-photo-wrap">
+              <img id="photo" class="mg-photo" alt="Learner to identify" />
+              <div class="mg-mask" aria-hidden="true">?</div>
+            </div>
+            <div class="mg-side">
+              <div id="timerWrap" class="mg-timer is-hidden" role="progressbar" aria-label="Time left"><i id="timerBar"></i></div>
+              <div id="mgOpts" class="mg-opts is-hidden"></div>
+              <p id="mgMsg" class="mg-msg" aria-live="polite"></p>
+            </div>
+          </div>
+        </div>
+
+        <div id="resultBox" class="is-hidden mg-result">
+          <h2 class="panel-title">Game over</h2>
+          <p class="mg-big" id="resScore">0</p>
+          <p id="resDetail" class="empty-hint"></p>
+          <p id="resMsg" class="plan-msg"></p>
+          <div class="imp-row">
+            <button type="button" id="again" class="btn btn-primary">Play again</button>
+            <button type="button" id="menuBtn" class="btn">Back to menu</button>
+            <button type="button" id="retryBtn" class="btn is-hidden">Retry saving</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-row">
+          <h2 class="panel-title">Leaderboard</h2>
+          <label class="imp-inline is-hidden" id="lbSeasonWrap">Session <select id="lbSeason"></select></label>
+          <button type="button" id="lbRefresh" class="btn btn-ghost">Refresh</button>
+        </div>
+        <p class="empty-hint">Best game per person this session: highest score, then the shortest total time.</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Player</th><th>Best score</th><th>Total time</th><th>Correct</th><th>Games</th></tr></thead>
+            <tbody id="lbBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="managePanel" class="panel is-hidden">
+        <h2 class="panel-title">Game settings</h2>
+        <form id="cfgForm" novalidate>
+          <div class="mg-cfg">
+            <label>Rounds <input type="number" id="cfgRounds" min="5" max="50" /></label>
+            <label>Options per round <input type="number" id="cfgOptions" min="2" max="6" /></label>
+            <label>First round (seconds) <input type="number" id="cfgStart" min="2" max="30" step="0.5" /></label>
+            <label>Last round (seconds) <input type="number" id="cfgMin" min="1" max="30" step="0.5" /></label>
+            <label>Photo-only preview (seconds, 0 = off) <input type="number" id="cfgPreview" min="0" max="10" step="0.5" /></label>
+            <label>Pause between rounds (seconds) <input type="number" id="cfgGap" min="0.5" max="5" step="0.1" /></label>
+            <label>Wrong options come from
+              <select id="cfgDistract">
+                <option value="sameGrade">The same grade (harder)</option>
+                <option value="random">Any grade (easier)</option>
+              </select>
+            </label>
+          </div>
+          <div class="imp-row" id="gradeBox"></div>
+          <button type="submit" class="btn btn-primary">Save settings</button>
+          <p id="cfgMsg" class="plan-msg"></p>
+        </form>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script type="module" src="js/memory-game.js"></script>
+</body>
+</html>

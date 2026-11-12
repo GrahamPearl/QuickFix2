@@ -29,7 +29,9 @@
         "publishSnapshot": true,
         "examImport": true,
         "examSeating": true,
-        "markConcession" : true
+        "markConcession" : true,
+        "playMemoryGame": true,
+        "manageMemoryGame": true
       }
     },
     "staff-head": {
@@ -56,7 +58,9 @@
         "viewAudit": true,
         "examImport": true,
         "examSeating": true,
-        "markConcession" : true
+        "markConcession" : true,
+        "playMemoryGame": true,
+        "manageMemoryGame": true
       }
     },
     "staff-gc": {
@@ -78,7 +82,8 @@
         "recommendAwards": true,
         "examImport": true,
         "examSeating": true,
-        "markConcession" : true
+        "markConcession" : true,
+        "playMemoryGame": true
       }
     },
     "staff-office": {
