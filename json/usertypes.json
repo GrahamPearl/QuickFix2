@@ -35,7 +35,10 @@
         "addBehaviour": true,
         "viewBehaviour": true, 
         "manageBehaviour": true,
-        "adminBehaviour": true  
+        "adminBehaviour": true,
+        "viewTextbooks" : true, 
+        "captureTextbooks": true,
+        "manageTextbooks": true  
       }
     },
     "staff-head": {
@@ -68,7 +71,10 @@
         "addBehaviour": true,
         "viewBehaviour": true, 
         "manageBehaviour": true,
-        "adminBehaviour": true
+        "adminBehaviour": true,
+        "viewTextbooks" : true, 
+        "captureTextbooks": true,
+        "manageTextbooks": true
       }
     },
     "staff-gc": {
@@ -94,7 +100,10 @@
         "playMemoryGame": true,
         "addBehaviour": true,
         "viewBehaviour": true, 
-        "manageBehaviour": true
+        "manageBehaviour": true,
+        "viewTextbooks" : true, 
+        "captureTextbooks": true,
+        "manageTextbooks": true
       }
     },
     "staff-office": {
@@ -118,7 +127,9 @@
         "hallPass": true,
         "viewAwards": true,
         "recommendAwards": true,
-        "addBehaviour": true
+        "addBehaviour": true,
+        "viewTextbooks" : true, 
+        "captureTextbooks": true
       }
     },
     "slt": {

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Textbooks</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+  <link rel="stylesheet" href="css/awards.css" />
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <div class="crest" aria-hidden="true">HHS</div>
+    <div><h1 class="site-title">Textbooks</h1><p class="site-subtitle">RESOURCES · BOOK REGISTER · ISSUE &amp; RETURN</p></div>
+    <div class="header-spacer"></div><span id="userBadge" class="admin-badge is-hidden"></span>
+    <a href="index.html" class="staff-link">&larr; Dashboard</a>
+  </div></header>
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+      <div class="tab-row">
+        <button class="tab is-active" data-tab="scan">Issue / return</button>
+        <button class="tab" data-tab="books">Books</button>
+        <button class="tab" data-tab="titles">Titles</button>
+        <button class="tab" data-tab="class">Class lists</button>
+      </div>
+
+      <section class="panel" data-pane="scan">
+        <div class="imp-row">
+          <select id="mode"><option value="issue">Issue to a learner</option><option value="return">Return</option></select>
+          <select id="outcome" class="is-hidden"></select>
+        </div>
+        <div id="learnerBox">
+          <label for="stuSearch">Learner (stays selected while you scan several books)</label>
+          <input type="text" id="stuSearch" placeholder="Name or admin number…" autocomplete="off" />
+          <div id="stuMatches"></div>
+          <p id="stuPicked" class="empty-hint">No learner selected.</p>
+        </div>
+        <label for="scanIn">Barcode (scan, then Enter)</label>
+        <input type="text" id="scanIn" autocomplete="off" />
+        <p id="scanMsg" class="plan-msg"></p>
+        <div class="table-wrap"><table><thead><tr><th>Result</th></tr></thead><tbody id="scanLog"></tbody></table></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="books">
+        <h2 class="panel-title">Add books</h2>
+        <div class="form-grid">
+          <div><label for="aTitle">Title</label><select id="aTitle"></select></div>
+          <div><label for="aTeacher">Teacher</label><input type="text" id="aTeacher" maxlength="80" autocomplete="off" /></div>
+          <div><label for="aCond">Condition</label><select id="aCond"></select></div>
+        </div>
+        <label for="aCodes">Barcodes (commas, spaces or new lines)</label>
+        <textarea id="aCodes" rows="3"></textarea>
+        <button type="button" id="aSave" class="btn btn-primary">Add books</button>
+        <p id="aMsg" class="plan-msg"></p>
+        <h2 class="panel-title" style="margin-top:18px">Find books</h2>
+        <div class="imp-row">
+          <select id="bMode"><option value="teacher">By teacher</option><option value="title">By title</option><option value="status">By status</option><option value="learner">Held by learner (admin no)</option><option value="class">Issued to class</option></select>
+          <input type="text" id="bValue" autocomplete="off" />
+          <select id="bTitle" class="is-hidden"></select>
+          <select id="bStatus" class="is-hidden"></select>
+          <button type="button" id="bLoad" class="btn btn-primary">Load</button>
+        </div>
+        <p id="bMsg" class="plan-msg"></p>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Barcode</th><th>Title</th><th>Gr</th><th>Subject</th><th>Teacher</th><th>Condition</th><th>Status</th><th>Held by</th></tr></thead><tbody id="bBody"></tbody></table></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="titles">
+        <h2 class="panel-title">Book titles</h2>
+        <div class="form-grid">
+          <div><label for="tTitle">Title</label><input type="text" id="tTitle" maxlength="120" autocomplete="off" /></div>
+          <div><label for="tSubject">Subject</label><input type="text" id="tSubject" list="subjList" maxlength="60" autocomplete="off" /><datalist id="subjList"></datalist></div>
+          <div><label for="tGrade">Grade</label><select id="tGrade"></select></div>
+        </div>
+        <button type="button" id="tSave" class="btn btn-primary">Add title</button>
+        <p id="tMsg" class="plan-msg"></p>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Title</th><th>Subject</th><th>Grade</th></tr></thead><tbody id="tBody"></tbody></table></div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="class">
+        <p class="empty-hint">Export a class list with each learner's books, fill in the BARCODE column for learners without a book, then import it to issue them.</p>
+        <div class="imp-row">
+          <select id="cGrade"></select><select id="cClass"></select>
+          <button type="button" id="cLoad" class="btn btn-primary">Load class</button>
+          <button type="button" id="cExport" class="btn">Export Excel</button>
+          <input type="file" id="cFile" accept=".xlsx,.xls,.csv" />
+        </div>
+        <p id="cMsg" class="plan-msg"></p>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Admin No</th><th>Learner</th><th>Barcode</th><th>Title</th><th>Status</th></tr></thead><tbody id="cBody"></tbody></table></div>
+        <button type="button" id="cApply" class="btn btn-primary is-hidden">Issue ready rows</button>
+      </section>
+    </div>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/textbooks-app.js"></script>
+</body>
+</html>
