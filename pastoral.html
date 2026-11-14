@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Pastoral &amp; Welfare</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+  <link rel="stylesheet" href="css/awards.css" />
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <div class="crest" aria-hidden="true">HHS</div>
+    <div><h1 class="site-title">Pastoral &amp; Welfare</h1><p class="site-subtitle">REFERRALS · MEDICAL ALERTS · SUPPORT FLAGS</p></div>
+    <div class="header-spacer"></div><span id="userBadge" class="admin-badge is-hidden"></span>
+    <a href="index.html" class="staff-link">&larr; Dashboard</a>
+  </div></header>
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+      <div class="tab-row">
+        <button class="tab is-active" data-tab="capture">Record</button>
+        <button class="tab is-hidden" data-tab="review">Review</button>
+      </div>
+
+      <section data-pane="capture">
+        <div class="panel">
+          <h2 class="panel-title">Record a referral, alert or support flag</h2>
+          <p class="empty-hint">Confidential. Write facts and practical actions only: no diagnoses, test results or detail of what a learner told you. Only grade controllers and senior staff can read entries.</p>
+          <label for="stuSearch">Learner</label>
+          <input type="text" id="stuSearch" placeholder="Name or admin number…" autocomplete="off" />
+          <div id="stuMatches"></div>
+          <p id="stuPicked" class="empty-hint">No learner selected.</p>
+          <div class="form-grid">
+            <div><label for="fKind">Type</label><select id="fKind"></select></div>
+            <div><label for="fCat">Category</label><select id="fCat"></select></div>
+            <div><label for="fUrg">Urgency</label><select id="fUrg"></select></div>
+            <div id="revWrap" class="is-hidden"><label for="fRev">Review date</label><input type="date" id="fRev" /></div>
+          </div>
+          <label for="fNote">Note (max 300)</label>
+          <textarea id="fNote" rows="3" maxlength="300"></textarea>
+          <p id="capMsg" class="plan-msg"></p>
+          <button type="button" id="saveBtn" class="btn btn-primary">Save</button>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">My entries (last 24 hours)</h2>
+          <div class="table-wrap"><table><thead><tr><th>Learner</th><th>Type</th><th>Category</th><th>Status</th></tr></thead><tbody id="mineBody"></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="review">
+        <div class="imp-row">
+          <select id="rGroup"><option value="active">Open and in progress</option><option value="closed">Closed</option></select>
+          <select id="rKind"></select>
+          <input type="text" id="rText" placeholder="Filter by name or admin no…" />
+          <button type="button" id="rLoad" class="btn btn-primary">Load</button>
+        </div>
+        <p id="rMsg" class="plan-msg"></p>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Learner</th><th>Type</th><th>Urgency</th><th>Note</th><th>Review by</th><th>By</th><th>Status</th></tr></thead><tbody id="rBody"></tbody></table></div>
+      </section>
+    </div>
+  </main>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/pastoral-app.js"></script>
+</body>
+</html>
