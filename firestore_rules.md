@@ -171,8 +171,9 @@ service cloud.firestore {
     }
     match /audit-log/{id} {
       allow create: if (canEditStudents()
-                        || (canRecommendAwards() && request.resource.data.action.matches('award[.].*')))
-                       && request.resource.data.by == request.auth.uid;
+                  || (canRecommendAwards() && request.resource.data.action.matches('award[.].*'))
+                  || (canCaptureResults() && request.resource.data.action.matches('sports[.].*')))
+                 && request.resource.data.by == request.auth.uid;
       allow read:   if isAdminOrHead();
       allow update, delete: if false;
     }
@@ -201,6 +202,53 @@ service cloud.firestore {
      allow delete: if typeIn(['admin','staff-head','staff-gc']);
    }
 
+   function canCaptureResults() { return typeIn(['admin','staff-head','staff-gc','staff']); }
+
+match /sports-results/{id} {
+  allow read: if canRead();
+  allow create: if canCaptureResults()
+    && request.resource.data.status == 'scheduled'
+    && request.resource.data.dayKey.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}')
+    && request.resource.data.teamName is string
+    && request.resource.data.opponent is string
+    && request.resource.data.opponent.size() > 0 && request.resource.data.opponent.size() <= 60
+    && request.resource.data.home is bool
+    && request.resource.data.ourScore == 0 && request.resource.data.theirScore == 0
+    && request.resource.data.createdBy == request.auth.uid;
+  // a finished result can only be corrected by admin / head staff
+  allow update: if canCaptureResults()
+    && (resource.data.status != 'final' || isAdminOrHead())
+    && request.resource.data.status in ['scheduled','live','final']
+    && request.resource.data.ourScore is int && request.resource.data.ourScore >= 0 && request.resource.data.ourScore <= 999
+    && request.resource.data.theirScore is int && request.resource.data.theirScore >= 0 && request.resource.data.theirScore <= 999
+    && (request.resource.data.status != 'final' || request.resource.data.result in ['W','L','D'])
+    && request.resource.data.get('breakdown','').size() <= 300
+    && request.resource.data.get('notes','').size() <= 300
+    && request.resource.data.get('topPlayers', []).size() <= 3;
+  allow delete: if isAdminOrHead() || (canCaptureResults() && resource.data.status == 'scheduled');
+}
+
+match /sports-live/{id} {
+  allow read: if canRead();
+  allow create, update: if canCaptureResults()
+    && request.resource.data.ourScore is int && request.resource.data.ourScore >= 0 && request.resource.data.ourScore <= 999
+    && request.resource.data.theirScore is int && request.resource.data.theirScore >= 0 && request.resource.data.theirScore <= 999
+    && request.resource.data.get('period','').size() <= 40;
+  allow delete: if canCaptureResults();
+}
+
+match /sports-summary/{season} {
+  allow read: if canRead();
+  allow create, update: if canCaptureResults() && request.resource.data.season is int;
+  allow delete: if isAdminOrHead();
+}
+
+match /sports-config/{id} {
+  allow read: if canRead();
+  allow create: if canCaptureResults() && request.resource.data.keys().hasOnly(['opponents']);
+  allow update: if canCaptureResults() && onlyChanges(['opponents']);
+}
+
    function memoryGameSeason() {
   return exists(/databases/$(database)/documents/setting/memoryGame)
     ? string(get(/databases/$(database)/documents/setting/memoryGame).data.get('season', 1))
@@ -226,8 +274,18 @@ match /memory-game-seasons/{season}/scores/{uid} {
   allow delete: if isAdminOrHead();
 }
 
-unction canAddBehaviour() { return typeIn(['admin','staff-head','staff-gc','staff','slt']); } function canManageBehaviour() { return typeIn(['admin','staff-head','staff-gc']); } function isBehaviourAdmin() { return typeIn(['admin','staff-head']); }
+function canAddBehaviour() { return typeIn(['admin','staff-head','staff-gc','staff','slt']); } 
+function canManageBehaviour() { return typeIn(['admin','staff-head','staff-gc']); } 
+function isBehaviourAdmin() { return typeIn(['admin','staff-head']); }
 
-match /behaviour-entries/{id} { allow read: if isBehaviourAdmin() || (typeIn(['staff-gc']) && resource.data.severity in ['minor','moderate']) || (canAddBehaviour() && resource.data.recordedBy == request.auth.uid && resource.data.recordedAt > request.time - duration.value(1, 'd')); allow create: if canAddBehaviour() && request.resource.data.recordedBy == request.auth.uid && request.resource.data.recordedByEmail == myEmail() && request.resource.data.recordedAt == request.time && request.resource.data.status == 'active' && request.resource.data.type in ['uniform','merit','demerit','incident'] && request.resource.data.severity in ['minor','moderate','serious'] && request.resource.data.adminNo.matches('[0-9]{5,6}') && request.resource.data.get('note','').size() <= 300; // void only: managers, and gc never on serious entries allow update: if canManageBehaviour() && (isBehaviourAdmin() || resource.data.severity != 'serious') && resource.data.status == 'active' && request.resource.data.status == 'voided' && request.resource.data.diff(resource.data).affectedKeys() .hasOnly(['status','voidedBy','voidedByEmail','voidedAt','voidedReason']); allow delete: if isBehaviourAdmin(); } match /detentions/{id} { allow read, create, update: if canManageBehaviour(); allow delete: if isBehaviourAdmin(); }
+match /behaviour-entries/{id} { allow read: if isBehaviourAdmin() || (typeIn(['staff-gc']) && resource.data.severity in ['minor','moderate']) || (canAddBehaviour() && resource.data.recordedBy == request.auth.uid && resource.data.recordedAt > request.time - duration.value(1, 'd')); 
+allow create: if canAddBehaviour() && request.resource.data.recordedBy == request.auth.uid && request.resource.data.recordedByEmail == myEmail() && request.resource.data.recordedAt == request.time && request.resource.data.status == 'active' && request.resource.data.type in ['uniform','merit','demerit','incident'] && request.resource.data.severity in ['minor','moderate','serious'] && request.resource.data.adminNo.matches('[0-9]{5,6}') && request.resource.data.get('note','').size() <= 300; 
+
+function canViewTextbooks() { return typeIn(['admin','staff-head','staff-gc','staff']); } function canCaptureTextbooks() { return typeIn(['admin','staff-head','staff-gc','staff']); } function canManageTextbooks() { return typeIn(['admin','staff-head','staff-gc']); }
+
+match /textbook-titles/{id} { allow read: if canViewTextbooks(); allow create: if canCaptureTextbooks(); allow update, delete: if canManageTextbooks(); } match /textbooks/{code} { allow read: if canViewTextbooks(); allow create: if canCaptureTextbooks(); allow update: if canManageTextbooks() || (canCaptureTextbooks() && request.resource.data.diff(resource.data).affectedKeys().hasOnly( ['status','condition','currentAdminNo','issuedName','issuedGrade','issuedClass','issuedOn','issuedBy','updatedBy','updatedAt'])); allow delete: if isAdminOrHead(); } match /textbook-loans/{id} { allow create: if canCaptureTextbooks(); allow read: if canManageTextbooks(); allow update, delete: if false; }
+
+// void only: managers, and gc never on serious entries allow update: if canManageBehaviour() && (isBehaviourAdmin() || resource.data.severity != 'serious') && resource.data.status == 'active' && request.resource.data.status == 'voided' && request.resource.data.diff(resource.data).affectedKeys() .hasOnly(['status','voidedBy','voidedByEmail','voidedAt','voidedReason']); allow delete: if isBehaviourAdmin(); } match /detentions/{id} { allow read, create, update: if canManageBehaviour(); allow delete: if isBehaviourAdmin(); }
   }
+}
 }
