@@ -11,10 +11,11 @@ import "./home-link.js";
 export const PAGES = [
   { group: "Students", label: "Student search", href: "search.html", perm: "view", desc: "Look up learners by name, admin number, class, subject or team." },
   { group: "Students", label: "Teams & activities", href: "hhs-teams/teams.html", perm: "viewTeams", desc: "Team lists, captains and age groups." },
+  { group: "Students", label: "Sports results", href: "sports.html", perm: "viewResults", desc: "Live scores, fixtures and results by team." },
   { group: "Students", label: "Awards", href: "awards.html", perm: "viewAwards", desc: "Recommend and review awards." },
-  { group: "Students", label: "Memory game", href: "memory-game.html", perm: "playMemoryGame", desc: "Match learner photos to names. Weekly leaderboard." },
   { group: "Students", label: "Hall passes", href: "hallpass.html", perm: "hallPass", desc: "Sign learners out and back in." },
   { group: "Students", label: "Behaviour", href: "behaviour.html", perm: "addBehaviour", desc: "Record uniform infringements, merits, incidents; detention register." },
+  { group: "Students", label: "Memory game", href: "memory-game.html", perm: "playMemoryGame", desc: "Match learner photos to names. Weekly leaderboard." },
   { group: "Classroom", label: "Textbooks", href: "textbooks.html", perm: "viewTextbooks", desc: "Book register, issue and return by barcode, class-list import and export." },
   { group: "Classroom", label: "Grade 8–9 seating", href: "seating-class.html", perm: "view", desc: "Seating plans by registration class." },
   { group: "Classroom", label: "Grade 10–11 seating", href: "seating-teacher.html", perm: "view", desc: "Seating plans by subject and teacher." },

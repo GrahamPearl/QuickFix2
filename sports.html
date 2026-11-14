@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Sports Results</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+  <link rel="stylesheet" href="css/awards.css" />
+  <link rel="stylesheet" href="css/sports.css" />
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <div class="crest" aria-hidden="true">HHS</div>
+    <div><h1 class="site-title">Sports Results</h1><p class="site-subtitle">LIVE SCORES · FIXTURES · RESULTS</p></div>
+    <div class="header-spacer"></div><span id="userBadge" class="admin-badge is-hidden"></span>
+    <a href="index.html" class="staff-link">&larr; Dashboard</a>
+  </div></header>
+
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+
+      <!-- Finish a match / correct a result (shared form) -->
+      <section id="resultPanel" class="panel is-hidden">
+        <h2 class="panel-title" id="rTitle">Result</h2>
+        <p id="rHead" class="empty-hint"></p>
+        <div class="form-grid">
+          <div><label for="rUs">Hillcrest score</label><input type="number" id="rUs" min="0" max="999" inputmode="numeric" /></div>
+          <div><label for="rThem">Opponent score</label><input type="number" id="rThem" min="0" max="999" inputmode="numeric" /></div>
+        </div>
+        <label for="rBreak">Score breakdown (optional)</label>
+        <input type="text" id="rBreak" maxlength="300" autocomplete="off" placeholder="e.g. 3 tries, 2 conversions · or 142/6 v 138 all out" />
+        <label for="rNotes">Notes (optional)</label>
+        <textarea id="rNotes" rows="2" maxlength="300"></textarea>
+
+        <h3 class="pool-title">Top players (up to 3)</h3>
+        <p class="empty-hint">Members of this team are listed first; search to pick anyone else.</p>
+        <div id="pQuick" class="pool"></div>
+        <input type="text" id="pSearch" placeholder="Search any learner by name or admin number…" autocomplete="off" />
+        <div id="pMatches"></div>
+        <div id="pChips" class="sp-chips"></div>
+
+        <p id="rMsg" class="plan-msg"></p>
+        <div class="imp-row">
+          <button type="button" id="rSave" class="btn btn-primary">Save result</button>
+          <button type="button" id="rCancel" class="btn btn-ghost">Cancel</button>
+        </div>
+      </section>
+
+      <div class="tab-row">
+        <button class="tab is-active" data-tab="live">Live now</button>
+        <button class="tab" data-tab="fixtures">Fixtures</button>
+        <button class="tab" data-tab="results">Results</button>
+      </div>
+
+      <!-- LIVE -->
+      <section data-pane="live">
+        <div class="panel">
+          <h2 class="panel-title">Live now</h2>
+          <p id="liveMsg" class="plan-msg"></p>
+          <div id="liveList"></div>
+        </div>
+      </section>
+
+      <!-- FIXTURES -->
+      <section class="is-hidden" data-pane="fixtures">
+        <div class="panel cap-only is-hidden">
+          <h2 class="panel-title">Add a fixture</h2>
+          <div class="form-grid form-grid-3">
+            <div><label for="fTeam">Team</label><select id="fTeam"></select></div>
+            <div><label for="fAge">Age group</label><select id="fAge"></select></div>
+            <div><label for="fDate">Date</label><input type="date" id="fDate" /></div>
+            <div><label for="fOpp">Opponent</label>
+              <input type="text" id="fOpp" list="oppList" maxlength="60" autocomplete="off" placeholder="e.g. Kearsney College" />
+              <datalist id="oppList"></datalist></div>
+            <div><label for="fHome">Home or away</label>
+              <select id="fHome"><option value="home">Home</option><option value="away">Away</option></select></div>
+            <div><label for="fVenue">Venue (optional)</label><input type="text" id="fVenue" maxlength="60" autocomplete="off" /></div>
+          </div>
+          <label class="chk"><input type="checkbox" id="fPlayed" /> Already played: enter the result now</label>
+          <p id="fMsg" class="plan-msg"></p>
+          <button type="button" id="fSave" class="btn btn-primary">Save fixture</button>
+        </div>
+
+        <div class="panel">
+          <div class="panel-row">
+            <h2 class="panel-title">Upcoming and live matches</h2>
+            <button type="button" id="upRefresh" class="btn btn-ghost">Refresh</button>
+          </div>
+          <p id="upMsg" class="plan-msg"></p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Date</th><th>Team</th><th>Opponent</th><th>Where</th><th>Status</th><th></th></tr></thead>
+              <tbody id="upBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULTS -->
+      <section class="is-hidden" data-pane="results">
+        <div class="panel">
+          <div class="imp-row">
+            <label class="imp-inline">Season <select id="xSeason"></select></label>
+            <select id="xTeam"></select>
+            <select id="xAge"></select>
+            <input type="text" id="xOpp" placeholder="Opponent…" />
+            <select id="xRes">
+              <option value="">Any result</option><option value="W">Won</option><option value="D">Drawn</option><option value="L">Lost</option>
+            </select>
+            <button type="button" id="xRefresh" class="btn btn-ghost">Refresh</button>
+            <button type="button" id="xExport" class="btn">Export Excel</button>
+          </div>
+          <p id="xMeta" class="plan-msg"></p>
+
+          <h3 class="pool-title">Team records</h3>
+          <div class="table-wrap imp-scroll">
+            <table>
+              <thead><tr><th>Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>For</th><th>Against</th></tr></thead>
+              <tbody id="tallyBody"></tbody>
+            </table>
+          </div>
+
+          <h3 class="pool-title">Results <span id="xCount" class="empty-hint"></span></h3>
+          <div class="table-wrap imp-scroll">
+            <table>
+              <thead><tr><th>Date</th><th>Team</th><th>Opponent</th><th>Score</th><th>Result</th><th>Top players</th><th></th></tr></thead>
+              <tbody id="xBody"></tbody>
+            </table>
+          </div>
+          <p><button type="button" id="xMore" class="btn btn-ghost is-hidden">Show more</button></p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/config.js"></script>
+  <script type="module" src="js/sports-app.js"></script>
+</body>
+</html>

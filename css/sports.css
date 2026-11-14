@@ -1,0 +1,43 @@
+/* sports.css — page styles for sports.html; palette, panels and tabs come from style.css / awards.css */
+.grow { flex: 1; }
+.admin-badge.is-hidden { display: none; }
+.ok { color: #2f6b3a; font-weight: 600; } .warn { color: #b36b00; font-weight: 600; } .err { color: var(--maroon); font-weight: 600; }
+.plan-msg { margin: 10px 0 0; font-size: .88rem; }
+.plan-msg:empty { display: none; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+td.num { text-align: right; font-variant-numeric: tabular-nums; }
+label.chk { display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font-size: .88rem; color: var(--text); margin: 10px 0; }
+
+input[type="number"], input[type="date"], textarea {
+  width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px;
+  font: inherit; font-size: .92rem; background: #fff; color: var(--text);
+}
+input[type="number"]:focus, input[type="date"]:focus, textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
+.imp-row input[type="text"] { min-width: 180px; }
+
+/* ---------- live match cards ---------- */
+.sp-live { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; background: #fff; margin-bottom: 14px; }
+.sp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; color: var(--ink); font-weight: 600; }
+.sp-score { font-family: var(--font-serif); font-size: 2.6rem; font-weight: 700; text-align: center; margin: 6px 0 10px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.sp-sides { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.sp-side { border-top: 3px solid var(--gold); padding-top: 8px; }
+.sp-side.them { border-top-color: var(--line-strong); }
+.sp-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sp-btns .btn { min-height: 44px; }
+.sp-foot { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.sp-foot input[type="text"] { flex: 1; min-width: 160px; }
+
+/* ---------- result form ---------- */
+.sp-chips { display: grid; gap: 8px; margin-top: 10px; }
+.sp-chip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px solid var(--line-strong); border-radius: 8px; padding: 8px 10px; background: #fff; }
+.sp-chip input[type="text"] { flex: 1; min-width: 160px; }
+#pMatches .btn { display: block; width: 100%; text-align: left; }
+
+/* ---------- results table ---------- */
+.sp-badge { font-size: .7rem; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+.sp-W { background: #dcefe0; color: #2f6b3a; }
+.sp-L { background: #f3dcdc; color: var(--maroon); }
+.sp-D { background: var(--gold-soft); color: #6b4a14; }
+tr.sp-week td { background: var(--paper); font-size: .72rem; font-weight: 700; color: var(--text-muted); padding: 6px 16px; }
+
+@media (max-width: 700px) { .sp-sides { grid-template-columns: 1fr; } }
