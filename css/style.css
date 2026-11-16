@@ -180,7 +180,6 @@ input[type="text"]:focus, select:focus {
   overflow: hidden;
   box-shadow: var(--shadow-sm);
 }
-.table-wrap.is-hidden { display: none; }
 table { width: 100%; border-collapse: collapse; }
 thead th {
   text-align: left;
@@ -338,15 +337,13 @@ tbody td {
 
 /* ---------- Responsive ---------- */
 @media (max-width: 860px) {
-  .field-row { grid-template-columns: 1fr; }
-  .filter-row { grid-template-columns: 1fr 1fr; }
   .cell-subjects, thead th:nth-child(6) { display: none; }
 }
 
 /* ==========================================================
    Admin auth widget (header)
    ========================================================== */
-.auth-widget { position: relative; display: flex; align-items: center; gap: 10px; }
+.auth-widget { display: flex; align-items: center; gap: 10px; }
 .btn-on-dark { color: var(--gold-soft); border-color: rgba(255, 255, 255, 0.25); }
 .btn-on-dark:hover { background: rgba(255, 255, 255, 0.08); }
 .admin-badge {
@@ -356,20 +353,6 @@ tbody td {
   padding: 6px 10px;
   border-radius: 999px;
 }
-.auth-popover {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  width: 260px;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: var(--shadow-md);
-  padding: 16px;
-  z-index: 60;
-}
-.auth-popover label { margin-top: 8px; }
-.auth-popover form > label:first-child { margin-top: 0; }
 .btn-block { width: 100%; margin-top: 12px; }
 
 /* ==========================================================
@@ -381,7 +364,6 @@ tbody td {
   gap: 12px 14px;
   margin-bottom: 18px;
 }
-.edit-form label { margin-top: 0; }
 
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; min-height: 28px; }
 .chip {
@@ -410,33 +392,10 @@ tbody td {
 .add-subject-row select { flex: 1; }
 
 .edit-actions { display: flex; gap: 10px; margin-top: 6px; }
-.btn-block.btn-primary { margin-top: 0; }
 
 /* ==========================================================
    Filters modal
    ========================================================== */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 55;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 8vh 20px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.18s;
-}
-.modal.is-open { opacity: 1; pointer-events: auto; }
-.modal-card {
-  background: var(--paper-raised);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-md);
-  width: min(560px, 100%);
-  transform: translateY(-8px);
-  transition: transform 0.18s;
-}
-.modal.is-open .modal-card { transform: translateY(0); }
 .modal-header {
   display: flex;
   align-items: center;
@@ -498,7 +457,6 @@ tbody td {
 .layout-btn.is-active { background: var(--ink); color: #fff; }
 .layout-btn:not(.is-active):hover { background: var(--paper); }
 
-.cards-wrap.is-hidden { display: none; }
 .results-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -542,7 +500,7 @@ tbody td {
 }
 
 @media (max-width: 700px) {
-  .results-grid, .results-grid.grid-cols-2, .results-grid.grid-cols-3 {
+  .results-grid, .results-grid.grid-cols-2 {
     grid-template-columns: repeat(2, 1fr);
   }
   .modal-grid { grid-template-columns: 1fr; }
@@ -677,11 +635,6 @@ body.is-locked #printCardsBtn { display: none !important; }
 .login-card label:first-of-type {
   margin-top: 0;
 }
-.login-divider {
-  margin-top: 16px;
-  border-top: 1px solid var(--line);
-  padding-top: 16px;
-}
 .login-status {
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -716,8 +669,6 @@ body.is-locked #printCardsBtn { display: none !important; }
   font-size: 0.82rem; cursor: pointer; text-decoration: underline; padding: 4px 6px;
 }
 .staff-link:hover { color: #fff; }
-.staff-link.is-hidden, .admin-badge.is-hidden { display: none; }
-
 .auth-links { display: flex; align-items: center; gap: 6px; }
 .auth-links:empty { display: none; }
 
@@ -732,7 +683,7 @@ body.is-locked #printCardsBtn { display: none !important; }
   justify-content: center; padding: 6vh 20px; overflow-y: auto; }
 .modal-wrapper.is-hidden { display: none; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(22,35,63,.45); }
-.modal-wrapper .modal-card { position: relative; transform: none; }
+.modal-wrapper .modal-card { position: relative; }
 .modal-card-wide { width: min(980px, 100%); }
 .modal-subtitle { margin: 2px 0 0; font-size: .82rem; color: var(--text-muted); }
 .btn-group { display: inline-flex; gap: 6px; }

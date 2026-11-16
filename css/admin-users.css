@@ -1,10 +1,4 @@
 /* admin-users.css — page styles for admin_users.html; palette from style.css */
-.header-spacer { flex: 1; }
-.staff-link {
-  background: none; border: none; color: var(--gold-soft); font: inherit;
-  font-size: 0.82rem; cursor: pointer; text-decoration: underline; padding: 4px 6px;
-}
-.staff-link:hover { color: #fff; }
 .panel {
   background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: var(--shadow-sm); padding: 20px 22px; margin-bottom: 20px;

@@ -1,10 +1,4 @@
 /* hallpass.css — page styles for hallpass.html; palette from style.css */
-.header-spacer { flex: 1; }
-.staff-link { background: none; border: none; color: var(--gold-soft); font: inherit; font-size: .82rem; cursor: pointer; text-decoration: underline; padding: 4px 6px; }
-.staff-link:hover { color: #fff; }
-.admin-badge { font-size: .8rem; color: var(--gold-soft); background: rgba(255,255,255,.08); padding: 6px 10px; border-radius: 999px; }
-.admin-badge.is-hidden { display: none; }
-
 .panel { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 20px 22px; margin-bottom: 20px; }
 .panel-title { font-family: var(--font-serif); font-size: 1.1rem; color: var(--ink); margin: 0 0 12px; border-bottom: 2px solid var(--gold); padding-bottom: 6px; }
 .panel-row { display: flex; justify-content: space-between; gap: 12px; }

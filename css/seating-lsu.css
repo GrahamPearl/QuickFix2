@@ -3,7 +3,6 @@
 .sep { flex: 1; }
 .inline-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .inline-row select { flex: 1; min-width: 220px; width: auto; }
-input[type="text"]#venueIn, input[type="text"]#sessionIn { width: 100%; }
 
 textarea#bulkIn {
   width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px;

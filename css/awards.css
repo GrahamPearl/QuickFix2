@@ -15,8 +15,6 @@
   padding: 4px 6px;
 }
 .staff-link:hover { color: #fff; }
-.btn-on-dark { color: var(--gold-soft); border-color: rgba(255, 255, 255, 0.25); }
-.btn-on-dark:hover { background: rgba(255, 255, 255, 0.08); }
 .user-badge {
   font-size: 0.8rem;
   color: var(--gold-soft);

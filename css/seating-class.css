@@ -1,10 +1,5 @@
 /* seating-class.css — page styles for seating-class.html; palette from style.css */
 :root { --seat-w: 210px; --seat-h: 72px; }
-.header-spacer { flex: 1; }
-.staff-link { background: none; border: none; color: var(--gold-soft); font: inherit; font-size: .82rem; cursor: pointer; text-decoration: underline; padding: 4px 6px; }
-.staff-link:hover { color: #fff; }
-.admin-badge { font-size: .8rem; color: var(--gold-soft); background: rgba(255,255,255,.08); padding: 6px 10px; border-radius: 999px; }
-.admin-badge.is-hidden { display: none; }
 
 .panel { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow-sm); padding: 20px 22px; margin-bottom: 20px; }
 .panel-title { font-family: var(--font-serif); font-size: 1.1rem; color: var(--ink); margin: 0 0 12px; border-bottom: 2px solid var(--gold); padding-bottom: 6px; }
@@ -12,7 +7,6 @@
 .panel-row .panel-title { flex: 1; min-width: 200px; }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.form-grid .span-2 { grid-column: span 1; }
 input[type="number"] { width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; font-size: .92rem; font-family: inherit; background: #fff; color: var(--text); }
 input[type="number"]:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-soft); }
 .layout-row { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 14px; align-items: end; }
@@ -50,8 +44,6 @@ tr.is-unselected { opacity: .45; }
 
 .preview-wrap { margin-top: 14px; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: #fff; }
 .preview-wrap img { display: block; max-width: none; height: auto; }
-.preview-wrap.is-hidden { display: none; }
-.is-hidden { display: none; }
 
 /* off-screen export stage */
 .export-stage { position: absolute; left: -10000px; top: 0; width: max-content; background: #fff; padding: 20px; font-family: Arial, Helvetica, sans-serif; color: #212529; }
