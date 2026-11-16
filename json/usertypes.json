@@ -41,7 +41,12 @@
         "adminBehaviour": true,
         "viewTextbooks" : true, 
         "captureTextbooks": true,
-        "manageTextbooks": true  
+        "manageTextbooks": true,
+        "addPastoral": true,
+        "viewPastoral" : true,
+        "managePastoral" : true,
+        "requestSubjectChange": true,
+        "manageSubjectChange": true  
       }
     },
     "staff-head": {
@@ -80,7 +85,12 @@
         "adminBehaviour": true,
         "viewTextbooks" : true, 
         "captureTextbooks": true,
-        "manageTextbooks": true
+        "manageTextbooks": true,
+        "addPastoral": true,
+        "viewPastoral" : true,
+        "managePastoral" : true,
+        "requestSubjectChange": true,
+        "manageSubjectChange": true
       }
     },
     "staff-gc": {
@@ -112,7 +122,12 @@
         "manageBehaviour": true,
         "viewTextbooks" : true, 
         "captureTextbooks": true,
-        "manageTextbooks": true
+        "manageTextbooks": true,
+        "addPastoral": true,
+        "viewPastoral" : true,
+        "managePastoral" : true,
+        "requestSubjectChange": true,
+        "manageSubjectChange": true
       }
     },
     "staff-office": {
@@ -141,7 +156,9 @@
         "recommendAwards": true,
         "addBehaviour": true,
         "viewTextbooks" : true, 
-        "captureTextbooks": true
+        "captureTextbooks": true,
+        "addPastoral": true,
+        "requestSubjectChange": true
       }
     },
     "slt": {

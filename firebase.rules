@@ -15,6 +15,12 @@ service cloud.firestore {
 
     // Type of the signed-in user. Email document first (that is how admin_user.js keys them),
     // uid document as a fallback. '' if not listed.
+    function canAddPastoral() { return typeIn(['admin','staff-head','staff-gc','staff']); } function canManagePastoral() { return typeIn(['admin','staff-head','staff-gc']); }
+
+match /pastoral-entries/{id} { allow read: if canManagePastoral() || (canAddPastoral() && resource.data.recordedBy == request.auth.uid && resource.data.recordedAt > request.time - duration.value(1, 'd')); allow create: if canAddPastoral() && request.resource.data.recordedBy == request.auth.uid && request.resource.data.recordedByEmail == myEmail() && request.resource.data.recordedAt == request.time && request.resource.data.status == 'open' && request.resource.data.kind in ['referral','medical','atrisk'] && request.resource.data.adminNo.matches('[0-9]{5,6}') && request.resource.data.get('note','').size() <= 300; allow update: if canManagePastoral() && request.resource.data.status in ['open','in-progress','closed'] && request.resource.data.diff(resource.data).affectedKeys() .hasOnly(['status','managerNote','updatedBy','updatedByEmail','updatedAt']); allow delete: if isAdminOrHead(); }
+
+match /subject-changes/{id} { allow read: if canManagePastoral() || resource.data.requestedBy == request.auth.uid; allow create: if canAddPastoral() && request.resource.data.requestedBy == request.auth.uid && request.resource.data.requestedByEmail == myEmail() && request.resource.data.requestedAt == request.time && request.resource.data.status == 'pending' && request.resource.data.adminNo.matches('[0-9]{5,6}'); allow update: if canManagePastoral() && resource.data.status == 'pending' && request.resource.data.status in ['approved','declined'] && request.resource.data.diff(resource.data).affectedKeys() .hasOnly(['status','decidedBy','decidedByEmail','decidedAt','declineReason','appliedAt','newTeacher','newLine']); allow delete: if isAdminOrHead(); }
+    
     function myType() {
       let email = myEmail();
       return request.auth == null ? '' :

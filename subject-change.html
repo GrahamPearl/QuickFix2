@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hillcrest High School — Subject Changes</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/admin-users.css" />
+  <link rel="stylesheet" href="css/admin-import.css" />
+  <link rel="stylesheet" href="css/awards.css" />
+</head>
+<body>
+  <header class="site-header"><div class="header-inner">
+    <div class="crest" aria-hidden="true">HHS</div>
+    <div><h1 class="site-title">Subject Changes</h1><p class="site-subtitle">REQUEST · APPROVE · UPDATE ENROLMENT</p></div>
+    <div class="header-spacer"></div><span id="userBadge" class="admin-badge is-hidden"></span>
+    <a href="index.html" class="staff-link">&larr; Dashboard</a>
+  </div></header>
+  <main class="page">
+    <div id="gate" class="loading-state"><span class="spinner"></span><span>Checking your access…</span></div>
+    <div id="app" class="is-hidden">
+      <div class="tab-row">
+        <button class="tab is-active" data-tab="request">Request</button>
+        <button class="tab is-hidden" data-tab="review">Review</button>
+      </div>
+
+      <section data-pane="request">
+        <div class="panel">
+          <h2 class="panel-title">Request a subject change</h2>
+          <label for="stuSearch">Learner</label>
+          <input type="text" id="stuSearch" placeholder="Name or admin number…" autocomplete="off" />
+          <div id="stuMatches"></div>
+          <p id="stuPicked" class="empty-hint">No learner selected.</p>
+          <div class="form-grid">
+            <div><label for="fFrom">Current subject</label><select id="fFrom"></select></div>
+            <div><label for="fTo">Change to</label><select id="fTo"></select></div>
+          </div>
+          <label for="fReason">Reason (max 300)</label>
+          <textarea id="fReason" rows="3" maxlength="300"></textarea>
+          <p id="reqMsg" class="plan-msg"></p>
+          <button type="button" id="reqBtn" class="btn btn-primary">Submit request</button>
+        </div>
+        <div class="panel">
+          <h2 class="panel-title">My requests</h2>
+          <div class="table-wrap"><table><thead><tr><th>Learner</th><th>Change</th><th>Status</th></tr></thead><tbody id="mineBody"></tbody></table></div>
+        </div>
+      </section>
+
+      <section class="panel is-hidden" data-pane="review">
+        <div class="imp-row">
+          <select id="rStatus"><option value="pending">Pending</option><option value="approved">Approved</option><option value="declined">Declined</option></select>
+          <button type="button" id="rLoad" class="btn btn-primary">Load</button>
+        </div>
+        <p class="empty-hint">Approving a move to a new subject updates the learner's subjects (teacher and line required). Approving a drop removes the subject.</p>
+        <p id="rMsg" class="plan-msg"></p>
+        <datalist id="teacherList"></datalist>
+        <div class="table-wrap imp-scroll"><table><thead><tr><th>Learner</th><th>Change</th><th>Reason</th><th>By</th><th>Decision</th></tr></thead><tbody id="rBody"></tbody></table></div>
+      </section>
+    </div>
+  </main>
+  <script src="js/config.js"></script>
+  <script type="module" src="js/subject-change-app.js"></script>
+</body>
+</html>

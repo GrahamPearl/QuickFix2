@@ -17,6 +17,8 @@ export const PAGES = [
   { group: "Students", label: "Behaviour", href: "behaviour.html", perm: "addBehaviour", desc: "Record uniform infringements, merits, incidents; detention register." },
   { group: "Students", label: "Memory game", href: "memory-game.html", perm: "playMemoryGame", desc: "Match learner photos to names. Weekly leaderboard." },
   { group: "Classroom", label: "Textbooks", href: "textbooks.html", perm: "viewTextbooks", desc: "Book register, issue and return by barcode, class-list import and export." },
+  { group: "Students", label: "Pastoral & welfare", href: "pastoral.html", perm: "addPastoral", desc: "Referrals, medical alerts and support flags (confidential)." }, 
+  { group: "Students", label: "Subject changes", href: "subject-change.html", perm: "requestSubjectChange", desc: "Request, approve and apply subject changes." },
   { group: "Classroom", label: "Grade 8–9 seating", href: "seating-class.html", perm: "view", desc: "Seating plans by registration class." },
   { group: "Classroom", label: "Grade 10–11 seating", href: "seating-teacher.html", perm: "view", desc: "Seating plans by subject and teacher." },
   { group: "Classroom", label: "Custom seating", href: "seating-lsu.html", perm: "view", desc: "Custom-venue seating." },
